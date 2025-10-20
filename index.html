@@ -68,42 +68,47 @@
         // =================================================================================================================================================
         
         // *************************************************************************************************************************************************
-        // ** ยืนยันชื่อคอลัมน์ (Column Headers): ชื่อฟิลด์ในโค้ดเหล่านี้จะต้องตรงกับหัวตารางใน Google Sheet CSV ทุกตัวอักษร **
+        // ** ยืนยันชื่อคอลัมน์ (Column Headers): ชื่อฟิลด์เหล่านี้จะต้องตรงกับหัวตารางใน Google Sheet CSV ทุกตัวอักษร **
         // ** Sheet 1 & 2: 'จุดวัดระดับน้ำ', 'ระดับน้ำปัจจุบัน', 'ส่วนต่างระดับน้ำ', 'ระดับการแจ้งเตือน' **
         // ** Sheet 3: 'สถานีสูบน้ำ', 'สถานะปั๊ม', 'เวลาล่าสุด', 'จำนวนครั้งการเข้าตรวจ' **
+        // ** หากยังขึ้น 'N/A' หรือข้อมูลไม่ครบ ให้เปิด Console (F12) เพื่อดูว่า Header ที่ถูก Parse คืออะไร และแถวไหนถูกข้ามไป **
         // *************************************************************************************************************************************************
 
         /**
-         * ฟังก์ชันแปลง CSV string เป็น Array of Objects
+         * ฟังก์ชันแปลง CSV string เป็น Array of Objects (ปรับปรุงให้ทนทานต่อการ Trim และ BOM มากขึ้น)
          * @param {string} csvText - ข้อความ CSV ที่ดึงมาจาก Google Sheet
          * @returns {Array<Object>} ข้อมูลที่แปลงแล้ว
          */
         function csvToArray(csvText) {
-            const lines = csvText.split('\n').filter(line => line.trim() !== '');
+            // แยกบรรทัดโดยรองรับทั้ง \r\n และ \n และกรองบรรทัดว่างออก
+            const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== '');
             if (lines.length === 0) return [];
 
-            // แยก Header และตัดช่องว่าง/เครื่องหมายนำหน้าออก
-            const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+            // 1. ประมวลผล Header: Trim, ลบ Quote, และลบ Byte Order Mark (BOM: \uFEFF)
+            const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, '').replace(/\uFEFF/g, ''));
             const result = [];
 
             for (let i = 1; i < lines.length; i++) {
                 const obj = {};
-                // ใช้ Regular Expression เพื่อจัดการกับค่าที่มีเครื่องหมายคำพูด (Quote)
                 const currentLine = lines[i];
-                // Regex ที่เข้มงวดขึ้น: จับคู่ค่าที่อาจมีเครื่องหมายคำพูด (") หรือไม่มีก็ได้
-                const values = currentLine.match(/(?:\"[^\"]*\"|[^,])+/g)?.map(v => v.trim().replace(/"/g, '')) || [];
-
-
-                if (values.length !== headers.length) {
-                    console.warn(`Skipping line ${i} due to column mismatch or empty values: ${currentLine}`);
-                    continue;
+                
+                // 2. ประมวลผล Value: ใช้ split() ธรรมดาและ Trim/ลบ Quote อย่างเข้มข้น
+                const values = currentLine.split(',').map(v => v.trim().replace(/"/g, ''));
+                
+                // ตรวจสอบความสมบูรณ์ของคอลัมน์
+                if (values.length === headers.length) {
+                    for (let j = 0; j < headers.length; j++) {
+                        // ใช้ Header ที่ถูกทำความสะอาดแล้วเป็น Key
+                        obj[headers[j]] = values[j]; 
+                    }
+                    result.push(obj);
+                } else {
+                    // หากจำนวนคอลัมน์ไม่ตรงกัน จะข้ามแถวนี้และแสดงคำเตือนใน Console (F12)
+                    console.warn(`[Parsing Error] Skipping data line ${i+1}: Column count mismatch. Expected ${headers.length}, Got ${values.length}. Line: "${currentLine}"`);
                 }
-
-                for (let j = 0; j < headers.length; j++) {
-                    obj[headers[j]] = values[j];
-                }
-                result.push(obj);
             }
+            console.log("Parsed Headers (ตรวจสอบว่าตรงกับ Sheet หรือไม่):", headers);
+            console.log(`Successfully parsed ${result.length} data rows.`);
             return result;
         }
 
@@ -124,13 +129,13 @@
                 console.error("Error fetching or parsing sheet data:", error);
                 // ข้อมูลจำลองเมื่อดึงข้อมูลไม่ได้
                 return [
-                    { 'จุดวัดระดับน้ำ': 'A1', 'ระดับน้ำปัจจุบัน': 'Error', 'ระดับน้ำก่อนหน้า': 'Error', 'ส่วนต่างระดับน้ำ': 'Error', 'ระดับการแจ้งเตือน': 'ไม่ได้เชื่อมต่อ' },
+                    { 'จุดวัดระดับน้ำ': 'N/A (Error)', 'ระดับน้ำปัจจุบัน': 'Error', 'ระดับน้ำก่อนหน้า': 'Error', 'ส่วนต่างระดับน้ำ': 'Error', 'ระดับการแจ้งเตือน': 'ไม่ได้เชื่อมต่อ' },
                 ];
             }
         }
 
         // =================================================================================================================================================
-        // ส่วนที่ 3: ฟังก์ชันดึงข้อมูลเฉพาะสำหรับแต่ละแหล่ง
+        // ส่วนที่ 3: ฟังก์ชันดึงข้อมูลเฉพาะสำหรับแต่ละแหล่ง (ไม่เปลี่ยนแปลง)
         // =================================================================================================================================================
 
         async function fetchWaterLevelData() {
@@ -179,26 +184,43 @@
         }
 
         // =================================================================================================================================================
-        // ส่วนที่ 4: ฟังก์ชันการแสดงผล (Rendering)
+        // ส่วนที่ 4: ฟังก์ชันการแสดงผล (Rendering - ปรับปรุงการใช้สีตามสถานะ)
         // =================================================================================================================================================
         
         /**
-         * แปลงระดับการแจ้งเตือนเป็นสีและไอคอน
+         * แปลงระดับการแจ้งเตือนเป็นสีและไอคอนตามคำขอของผู้ใช้:
+         * วิกฤติ/อันตราย/แจ้งเตือน/ผิดปกติ = แดง
+         * เฝ้าระวัง/สูง = เหลือง/อำพัน
+         * ปกติ/ทำงาน = เขียว
+         * ไม่ทำงาน = น้ำเงิน/คราม
          */
         function getAlertStyles(alertLevel) {
-            const level = alertLevel.toString().trim();
-            if (level.includes('ผิดปกติ') || level.includes('อันตราย') || level.includes('แจ้งเตือน')) {
+            const level = alertLevel ? alertLevel.toString().trim() : 'N/A';
+            
+            // 1. วิกฤติ / อันตราย / ผิดปกติ / แจ้งเตือน (Red)
+            if (level.includes('วิกฤติ') || level.includes('ผิดปกติ') || level.includes('อันตราย') || level.includes('แจ้งเตือน')) {
                 return { color: 'bg-red-100 text-red-800 ring-red-300', icon: 'AlertTriangle', iconColor: 'text-red-500' };
             }
+            
+            // 2. เฝ้าระวัง / สูง (Amber/Yellow)
             if (level.includes('เฝ้าระวัง') || level.includes('สูง')) {
-                return { color: 'bg-orange-100 text-orange-800 ring-orange-300', icon: 'Eye', iconColor: 'text-orange-500' };
+                // ใช้สี Amber สำหรับเฝ้าระวังตามคำขอ
+                return { color: 'bg-amber-100 text-amber-800 ring-amber-300', icon: 'Eye', iconColor: 'text-amber-500' };
             }
-            if (level.includes('ทำงาน')) {
-                return { color: 'bg-green-100 text-green-800 ring-green-300', icon: 'Activity', iconColor: 'text-green-500' };
+            
+            // 3. ปกติ / ทำงาน (Green)
+            if (level.includes('ปกติ') || level.includes('ทำงาน')) {
+                // ใช้สี Green สำหรับสถานะปกติและปั๊มที่กำลังทำงานตามคำขอ
+                return { color: 'bg-green-100 text-green-800 ring-green-300', icon: 'CheckCircle', iconColor: 'text-green-500' };
             }
-            if (level.includes('ไม่ทำงาน') || level.includes('ปกติ')) {
-                return { color: 'bg-blue-100 text-blue-800 ring-blue-300', icon: 'CheckCircle', iconColor: 'text-blue-500' };
+            
+            // 4. ไม่ทำงาน (Indigo - Neutral operational state)
+            if (level.includes('ไม่ทำงาน')) {
+                // ใช้สี Indigo สำหรับสถานะที่ไม่ทำงาน (Off/Standby)
+                return { color: 'bg-indigo-100 text-indigo-800 ring-indigo-300', icon: 'PauseCircle', iconColor: 'text-indigo-500' };
             }
+
+            // Default
             return { color: 'bg-gray-100 text-gray-800 ring-gray-300', icon: 'Info', iconColor: 'text-gray-500' };
         }
 
@@ -222,21 +244,24 @@
          * สร้างแถวตารางสำหรับข้อมูลระดับน้ำ (Sheet 1 & 2)
          */
         function createWaterTableRow(data) {
-            const alertStyles = getAlertStyles(data['ระดับการแจ้งเตือน']);
-            const diffIcon = getDiffIcon(data['ส่วนต่างระดับน้ำ']);
+            // ใช้ 'ระดับการแจ้งเตือน' เป็น key สำหรับดึงสถานะ
+            const alertLevel = data['ระดับการแจ้งเตือน'] || 'N/A';
+            const alertStyles = getAlertStyles(alertLevel);
+            const diffValue = data['ส่วนต่างระดับน้ำ'] || '0.00';
+            const diffIcon = getDiffIcon(diffValue);
 
             return `
                 <tr class="border-b hover:bg-gray-50 transition duration-150">
                     <td class="p-4 whitespace-nowrap font-medium text-gray-900">
-                        ${data['จุดวัดระดับน้ำ']}
+                        ${data['จุดวัดระดับน้ำ'] || 'N/A'} 
                     </td>
                     <td class="p-4 whitespace-nowrap text-lg font-bold text-gray-900">
-                        ${data['ระดับน้ำปัจจุบัน']} ม.
+                        ${data['ระดับน้ำปัจจุบัน'] || 'N/A'} ม.
                     </td>
                     <td class="p-4 whitespace-nowrap text-gray-600">
                         <div class="flex items-center space-x-2">
                             <span class="text-sm">
-                                ${data['ส่วนต่างระดับน้ำ']}
+                                ${diffValue}
                             </span>
                             <i data-lucide="${diffIcon.icon}" class="w-4 h-4 ${diffIcon.iconColor}"></i>
                         </div>
@@ -244,7 +269,7 @@
                     <td class="p-4 whitespace-nowrap">
                         <span class="status-badge ${alertStyles.color} ring-1 ring-inset">
                              <i data-lucide="${alertStyles.icon}" class="w-3 h-3 mr-1"></i>
-                            ${data['ระดับการแจ้งเตือน']}
+                            ${alertLevel}
                         </span>
                     </td>
                 </tr>
@@ -255,20 +280,21 @@
          * สร้างแถวตารางสำหรับข้อมูลสถานะปั๊ม (Sheet 3)
          */
         function createPumpTableRow(data) {
-            const alertStyles = getAlertStyles(data['สถานะปั๊ม']);
+            // ใช้ 'สถานะปั๊ม' เป็น key สำหรับดึงสถานะ
+            const pumpStatus = data['สถานะปั๊ม'] || 'ไม่พบสถานะ';
+            const alertStyles = getAlertStyles(pumpStatus);
             const lastUpdate = data['เวลาล่าสุด'] || 'N/A';
-            // ดึงข้อมูลจำนวนครั้งการเข้าตรวจ (Field Name ต้องตรงกับ Header ใน Sheet)
             const dailyInspections = data['จำนวนครั้งการเข้าตรวจ'] || '0'; 
 
             return `
                 <tr class="border-b hover:bg-gray-50 transition duration-150">
                     <td class="p-4 whitespace-nowrap font-medium text-gray-900">
-                        ${data['สถานีสูบน้ำ']}
+                        ${data['สถานีสูบน้ำ'] || 'N/A'}
                     </td>
                     <td class="p-4 whitespace-nowrap">
                         <span class="status-badge ${alertStyles.color} ring-1 ring-inset">
                             <i data-lucide="${alertStyles.icon}" class="w-3 h-3 mr-1"></i>
-                            ${data['สถานะปั๊ม']}
+                            ${pumpStatus}
                         </span>
                     </td>
                     <td class="p-4 whitespace-nowrap text-sm text-gray-500">
@@ -292,9 +318,9 @@
             tableBody.innerHTML = ''; // ล้างข้อมูลเก่า
             
             const isPumpTable = elementId === 'pump-status-table-body';
-            const colSpan = isPumpTable ? 4 : 4; // ตารางปั๊มมี 4 คอลัมน์, ตารางน้ำมี 4 คอลัมน์
+            const colSpan = isPumpTable ? 4 : 4; 
             
-            if (data.length === 0 || data[0]?.['ระดับน้ำปัจจุบัน'] === 'Error' || data[0]?.['สถานีสูบน้ำ'] === 'Error') {
+            if (data.length === 0 || data[0]?.['ระดับน้ำปัจจุบัน']?.includes('Error') || data[0]?.['สถานีสูบน้ำ']?.includes('Error')) {
                 tableBody.innerHTML = `
                     <tr>
                         <td colspan="${colSpan}" class="p-8 text-center text-red-500 bg-red-50/50">
@@ -311,10 +337,8 @@
 
             lucide.createIcons();
         }
-
-        /**
-         * อัปเดตส่วนแสดงผลค่าฝุ่น Dustboy
-         */
+        
+        // (updateDustboyCard และส่วนอื่นๆ ไม่เปลี่ยนแปลง)
         function updateDustboyCard(data) {
             const card = document.getElementById('dustboy-card');
             if (!card) return;
@@ -355,9 +379,8 @@
             lucide.createIcons();
         }
 
-
         // =================================================================================================================================================
-        // ส่วนที่ 5: ฟังก์ชันหลักในการอัปเดต Dashboard
+        // ส่วนที่ 5: ฟังก์ชันหลักในการอัปเดต Dashboard (ไม่เปลี่ยนแปลง)
         // =================================================================================================================================================
 
         let isUpdating = false;
@@ -421,7 +444,7 @@
         }
 
         // =================================================================================================================================================
-        // ส่วนที่ 6: การเริ่มต้น (Initialization)
+        // ส่วนที่ 6: การเริ่มต้น (Initialization - ไม่เปลี่ยนแปลง)
         // =================================================================================================================================================
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -467,10 +490,9 @@
     <main class="grid grid-cols-1 lg:grid-cols-3 gap-6 main-content-area">
         
         <!-- Column 1: Water Level Monitoring (Sheet 1) & Dustboy API -->
-        <!-- ใช้ flex-col และ flex-grow เพื่อให้ตารางระดับน้ำใช้พื้นที่ที่เหลือทั้งหมด -->
         <div class="lg:col-span-2 flex flex-col space-y-6 h-full">
             
-            <!-- Dustboy API Card (Fixed Height - h-40 isประมาณ 160px) -->
+            <!-- Dustboy API Card (Fixed Height) -->
             <div id="dustboy-card" class="p-6 rounded-xl shadow-lg bg-gray-300 h-40 flex-shrink-0">
                 <!-- Content will be injected by JavaScript -->
                 <div class="animate-pulse flex space-x-4">
@@ -488,13 +510,12 @@
             </div>
 
             <!-- Card: ตรวจวัดระดับ (Sheet 1) - ใช้พื้นที่ที่เหลือทั้งหมด -->
-            <!-- IMPORTANT: ใช้ flex flex-col เพื่อจัดการความสูงของตารางภายใน -->
             <div class="bg-white p-6 rounded-xl shadow-md flex-grow flex flex-col overflow-hidden">
                 <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center flex-shrink-0">
                     <i data-lucide="Gauge" class="w-5 h-5 mr-2 text-blue-600"></i>
                     สถานะการตรวจวัดระดับน้ำ (4 จุด - 4 รอบ/วัน)
                 </h2>
-                <!-- Scrollable Table Container (ใช้ flex-grow เพื่อกินพื้นที่ที่เหลือ) -->
+                <!-- Scrollable Table Container -->
                 <div class="overflow-y-auto flex-grow -mx-6 px-6"> <!-- -mx-6, px-6 เพื่อขยายตารางให้เต็มความกว้าง Card -->
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
@@ -522,10 +543,9 @@
         </div>
 
         <!-- Column 2: Chao Phraya Level (Sheet 2) & Pump Status (Sheet 3) -->
-        <!-- ใช้ h-full เพื่อกินพื้นที่ความสูงของ main-content-area -->
         <div class="lg:col-span-1 flex flex-col space-y-6 h-full">
             
-            <!-- Card: ระดับน้ำเจ้าพระยา (Sheet 2) - ใช้พื้นที่ครึ่งหนึ่ง (flex-grow) -->
+            <!-- Card: ระดับน้ำเจ้าพระยา (Sheet 2) -->
             <div class="bg-white p-6 rounded-xl shadow-md flex-grow flex flex-col overflow-hidden">
                 <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center flex-shrink-0">
                     <i data-lucide="Waves" class="w-5 h-5 mr-2 text-teal-600"></i>
@@ -557,7 +577,7 @@
                 </div>
             </div>
 
-            <!-- Card: สถานะปั๊ม (Sheet 3) - ใช้พื้นที่ครึ่งหนึ่ง (flex-grow) -->
+            <!-- Card: สถานะปั๊ม (Sheet 3) -->
             <div class="bg-white p-6 rounded-xl shadow-md flex-grow flex flex-col overflow-hidden">
                 <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center flex-shrink-0">
                     <i data-lucide="Box" class="w-5 h-5 mr-2 text-indigo-600"></i>
