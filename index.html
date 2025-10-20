@@ -54,7 +54,7 @@
         // *************************************************************************************************************************************************
         // ** สำคัญ: กรุณาแทนที่ URL ตัวอย่างเหล่านี้ด้วย URL จริงของ Google Sheets ที่คุณเผยแพร่เป็น CSV และ Dustboy API URL **
         // *************************************************************************************************************************************************
-        const GOOGLE_SHEET_URL_1 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT452CdpcF_hoA-_x3a6Ji0YKeWTuSr_9CM0We83aAAPiBWMRoHrKEujaYtEzHMZYMLEL8wKa10NPYF/pub?gid=675852265&single=true&output=csv"; // ตรวจวัดระดับ
+         const GOOGLE_SHEET_URL_1 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT452CdpcF_hoA-_x3a6Ji0YKeWTuSr_9CM0We83aAAPiBWMRoHrKEujaYtEzHMZYMLEL8wKa10NPYF/pub?gid=675852265&single=true&output=csv"; // ตรวจวัดระดับ
         const GOOGLE_SHEET_URL_2 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT5OYSm3Hn1V4kegJf9x3iK2OGvUIL7vbnWryNUsx15VCm4NdxoVoWZMx1vWTlKcZskeD-YYjhbKn2V/pub?gid=202563025&single=true&output=csv"; // ข้อมูลระดับน้ำเจ้าพระยา
         const GOOGLE_SHEET_URL_3 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTyPcfGQReUPOHckF-6bA4UOucC8cbqRvHj-aTP7uWRkBjvQ4HrieGIhcet4OH9O0DjT_M2FM3QaaV9/pub?gid=273571070&single=true&output=csv"; // ข้อมูลการตรวจสอบการทำงานของเครื่องสูบน้ำ
         const DUSTBOY_API_URL = "https://api.example.com/dustboy/latest_data"; // URL สำหรับ Dustboy API (โปรดแทนที่ด้วย URL จริง)
@@ -67,12 +67,17 @@
         // ส่วนที่ 2: ฟังก์ชันช่วยเหลือและการจำลองข้อมูล (Mock Data)
         // =================================================================================================================================================
         
-        // *************************************************************************************************************************************************
-        // ** ยืนยันชื่อคอลัมน์ (Column Headers): ชื่อฟิลด์เหล่านี้จะต้องตรงกับหัวตารางใน Google Sheet CSV ทุกตัวอักษร **
-        // ** Sheet 1 & 2: 'จุดวัดระดับน้ำ', 'ระดับน้ำปัจจุบัน', 'ส่วนต่างระดับน้ำ', 'ระดับการแจ้งเตือน' **
-        // ** Sheet 3: 'สถานีสูบน้ำ', 'สถานะปั๊ม', 'เวลาล่าสุด', 'จำนวนครั้งการเข้าตรวจ' **
-        // ** หากยังขึ้น 'N/A' หรือข้อมูลไม่ครบ ให้เปิด Console (F12) เพื่อดูว่า Header ที่ถูก Parse คืออะไร และแถวไหนถูกข้ามไป **
-        // *************************************************************************************************************************************************
+        /**
+         * ทำความสะอาดข้อความ โดยการลบช่องว่างทั้งหมด (รวมถึงช่องว่างที่ซ่อนอยู่)
+         * เพื่อให้มั่นใจว่าการเปรียบเทียบคำภาษาไทยถูกต้อง
+         * @param {string} text - ข้อความที่ต้องการทำความสะอาด
+         * @returns {string} ข้อความที่ถูกทำความสะอาดแล้ว
+         */
+        function sanitizeText(text) {
+            if (!text) return '';
+            // ลบช่องว่าง (Space) และ Newline/Tab ออกทั้งหมด
+            return text.trim().replace(/\s+/g, '');
+        }
 
         /**
          * ฟังก์ชันแปลง CSV string เป็น Array of Objects (ปรับปรุงให้ทนทานต่อการ Trim และ BOM มากขึ้น)
@@ -188,34 +193,31 @@
         // =================================================================================================================================================
         
         /**
-         * แปลงระดับการแจ้งเตือนเป็นสีและไอคอนตามคำขอของผู้ใช้:
-         * วิกฤติ/อันตราย/แจ้งเตือน/ผิดปกติ = แดง
-         * เฝ้าระวัง/สูง = เหลือง/อำพัน
-         * ปกติ/ทำงาน = เขียว
-         * ไม่ทำงาน = น้ำเงิน/คราม
+         * แปลงระดับการแจ้งเตือนเป็นสีและไอคอน (ใช้ sanitizeText เพื่อความแม่นยำภาษาไทย)
          */
         function getAlertStyles(alertLevel) {
-            const level = alertLevel ? alertLevel.toString().trim() : 'N/A';
+            // ทำความสะอาด string ก่อนการเปรียบเทียบเพื่อให้แม่นยำแม้มีช่องว่างพิเศษ
+            const sanitizedLevel = sanitizeText(alertLevel);
             
             // 1. วิกฤติ / อันตราย / ผิดปกติ / แจ้งเตือน (Red)
-            if (level.includes('วิกฤติ') || level.includes('ผิดปกติ') || level.includes('อันตราย') || level.includes('แจ้งเตือน')) {
+            if (sanitizedLevel.includes('วิกฤติ') || sanitizedLevel.includes('ผิดปกติ') || sanitizedLevel.includes('อันตราย') || sanitizedLevel.includes('แจ้งเตือน')) {
                 return { color: 'bg-red-100 text-red-800 ring-red-300', icon: 'AlertTriangle', iconColor: 'text-red-500' };
             }
             
             // 2. เฝ้าระวัง / สูง (Amber/Yellow)
-            if (level.includes('เฝ้าระวัง') || level.includes('สูง')) {
-                // ใช้สี Amber สำหรับเฝ้าระวังตามคำขอ
+            if (sanitizedLevel.includes('เฝ้าระวัง') || sanitizedLevel.includes('สูง')) {
+                // ใช้สี Amber สำหรับเฝ้าระวัง
                 return { color: 'bg-amber-100 text-amber-800 ring-amber-300', icon: 'Eye', iconColor: 'text-amber-500' };
             }
             
             // 3. ปกติ / ทำงาน (Green)
-            if (level.includes('ปกติ') || level.includes('ทำงาน')) {
-                // ใช้สี Green สำหรับสถานะปกติและปั๊มที่กำลังทำงานตามคำขอ
+            if (sanitizedLevel.includes('ปกติ') || sanitizedLevel.includes('ทำงาน')) {
+                // ใช้สี Green สำหรับสถานะปกติและปั๊มที่กำลังทำงาน
                 return { color: 'bg-green-100 text-green-800 ring-green-300', icon: 'CheckCircle', iconColor: 'text-green-500' };
             }
             
             // 4. ไม่ทำงาน (Indigo - Neutral operational state)
-            if (level.includes('ไม่ทำงาน')) {
+            if (sanitizedLevel.includes('ไม่ทำงาน')) {
                 // ใช้สี Indigo สำหรับสถานะที่ไม่ทำงาน (Off/Standby)
                 return { color: 'bg-indigo-100 text-indigo-800 ring-indigo-300', icon: 'PauseCircle', iconColor: 'text-indigo-500' };
             }
@@ -225,16 +227,18 @@
         }
 
         /**
-         * แปลงส่วนต่างระดับน้ำเป็นสีและไอคอน
+         * แปลงส่วนต่างระดับน้ำเป็นสีและไอคอนตามคำขอ (เพิ่ม = แดง, ลดลง = เขียว)
          */
         function getDiffIcon(diff) {
             const numDiff = parseFloat(diff);
             if (isNaN(numDiff)) return { icon: 'Minus', iconColor: 'text-gray-500' };
 
             if (numDiff > 0.001) {
-                return { icon: 'ArrowUp', iconColor: 'text-red-500' };
+                // เพิ่มขึ้น: สีแดง (สัญญาณเตือนความสูงของระดับน้ำ)
+                return { icon: 'ArrowUp', iconColor: 'text-red-500' }; 
             } else if (numDiff < -0.001) {
-                return { icon: 'ArrowDown', iconColor: 'text-blue-500' };
+                // ลดลง: สีเขียว (สัญญาณที่ดี/ปลอดภัยขึ้น)
+                return { icon: 'ArrowDown', iconColor: 'text-green-500' }; 
             } else {
                 return { icon: 'Minus', iconColor: 'text-gray-500' };
             }
@@ -260,7 +264,7 @@
                     </td>
                     <td class="p-4 whitespace-nowrap text-gray-600">
                         <div class="flex items-center space-x-2">
-                            <span class="text-sm">
+                            <span class="text-sm font-semibold ${diffIcon.iconColor}">
                                 ${diffValue}
                             </span>
                             <i data-lucide="${diffIcon.icon}" class="w-4 h-4 ${diffIcon.iconColor}"></i>
