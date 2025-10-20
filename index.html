@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>การบริหารจัดการน้ำและสิ่งแวดล้อม เมืองทองธานี</title>
+    <title>Dashboard การบริหารจัดการน้ำและสิ่งแวดล้อม</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons CDN -->
@@ -23,7 +23,7 @@
             align-items: center;
         }
         
-        /* *** CSS เพื่อให้พอดีหน้าจอ 100% (16:9) และไม่ให้เกิด Scrollbar หลัก *** */
+        /* *** CSS เพื่อให้พอดีหน้าจอ 100% (Full Screen) และไม่ให้เกิด Scrollbar หลัก *** */
         html, body {
             height: 100%; /* ใช้ความสูงเต็ม viewport */
             margin: 0;
@@ -33,14 +33,13 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
-            padding: 2rem; /* p-8 ใน Tailwind */
+            padding: 1.5rem; /* ลด p-8 เป็น p-6 (1.5rem) เพื่อให้มีพื้นที่เหลือมากขึ้น */
             overflow: hidden; /* ป้องกัน scrollbar หลัก */
         }
         
-        /* ให้ Main Content ใช้พื้นที่ที่เหลือทั้งหมด และอนุญาตให้ Scroll เฉพาะภายใน (ถ้าจำเป็น) */
+        /* ให้ Main Content ใช้พื้นที่ที่เหลือทั้งหมด */
         .main-content-area {
             flex-grow: 1;
-            /* ปล่อยให้ Overflow-y เป็นไปตามการจัดการของ Flexbox ที่มีการ์ดภายในควบคุม */
         }
         
     </style>
@@ -67,6 +66,12 @@
         // =================================================================================================================================================
         // ส่วนที่ 2: ฟังก์ชันช่วยเหลือและการจำลองข้อมูล (Mock Data)
         // =================================================================================================================================================
+        
+        // *************************************************************************************************************************************************
+        // ** ยืนยันชื่อคอลัมน์ (Column Headers): ชื่อฟิลด์ในโค้ดเหล่านี้จะต้องตรงกับหัวตารางใน Google Sheet CSV ทุกตัวอักษร **
+        // ** Sheet 1 & 2: 'จุดวัดระดับน้ำ', 'ระดับน้ำปัจจุบัน', 'ส่วนต่างระดับน้ำ', 'ระดับการแจ้งเตือน' **
+        // ** Sheet 3: 'สถานีสูบน้ำ', 'สถานะปั๊ม', 'เวลาล่าสุด', 'จำนวนครั้งการเข้าตรวจ' **
+        // *************************************************************************************************************************************************
 
         /**
          * ฟังก์ชันแปลง CSV string เป็น Array of Objects
@@ -85,7 +90,9 @@
                 const obj = {};
                 // ใช้ Regular Expression เพื่อจัดการกับค่าที่มีเครื่องหมายคำพูด (Quote)
                 const currentLine = lines[i];
-                const values = currentLine.match(/(".*?"|[^",]+)(?=\s*\,|\s*$)/g)?.map(v => v.trim().replace(/"/g, '')) || [];
+                // Regex ที่เข้มงวดขึ้น: จับคู่ค่าที่อาจมีเครื่องหมายคำพูด (") หรือไม่มีก็ได้
+                const values = currentLine.match(/(?:\"[^\"]*\"|[^,])+/g)?.map(v => v.trim().replace(/"/g, '')) || [];
+
 
                 if (values.length !== headers.length) {
                     console.warn(`Skipping line ${i} due to column mismatch or empty values: ${currentLine}`);
@@ -461,7 +468,7 @@
         
         <!-- Column 1: Water Level Monitoring (Sheet 1) & Dustboy API -->
         <!-- ใช้ flex-col และ flex-grow เพื่อให้ตารางระดับน้ำใช้พื้นที่ที่เหลือทั้งหมด -->
-        <div class="lg:col-span-2 flex flex-col space-y-6">
+        <div class="lg:col-span-2 flex flex-col space-y-6 h-full">
             
             <!-- Dustboy API Card (Fixed Height - h-40 isประมาณ 160px) -->
             <div id="dustboy-card" class="p-6 rounded-xl shadow-lg bg-gray-300 h-40 flex-shrink-0">
@@ -481,13 +488,14 @@
             </div>
 
             <!-- Card: ตรวจวัดระดับ (Sheet 1) - ใช้พื้นที่ที่เหลือทั้งหมด -->
-            <div class="bg-white p-6 rounded-xl shadow-md flex-grow overflow-hidden">
-                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+            <!-- IMPORTANT: ใช้ flex flex-col เพื่อจัดการความสูงของตารางภายใน -->
+            <div class="bg-white p-6 rounded-xl shadow-md flex-grow flex flex-col overflow-hidden">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center flex-shrink-0">
                     <i data-lucide="Gauge" class="w-5 h-5 mr-2 text-blue-600"></i>
                     สถานะการตรวจวัดระดับน้ำ (4 จุด - 4 รอบ/วัน)
                 </h2>
-                <!-- Scrollable Table Container (สูง 100% ของ Card - header) -->
-                <div class="overflow-y-auto" style="max-height: calc(100% - 3rem);">
+                <!-- Scrollable Table Container (ใช้ flex-grow เพื่อกินพื้นที่ที่เหลือ) -->
+                <div class="overflow-y-auto flex-grow -mx-6 px-6"> <!-- -mx-6, px-6 เพื่อขยายตารางให้เต็มความกว้าง Card -->
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
                             <tr>
@@ -514,17 +522,17 @@
         </div>
 
         <!-- Column 2: Chao Phraya Level (Sheet 2) & Pump Status (Sheet 3) -->
-        <!-- ใช้ flex-col เพื่อให้ 2 ตารางย่อยแชร์ความสูงที่เหลือเท่ากัน (flex-grow) -->
-        <div class="lg:col-span-1 flex flex-col space-y-6">
+        <!-- ใช้ h-full เพื่อกินพื้นที่ความสูงของ main-content-area -->
+        <div class="lg:col-span-1 flex flex-col space-y-6 h-full">
             
-            <!-- Card: ระดับน้ำเจ้าพระยา (Sheet 2) - ใช้พื้นที่ครึ่งหนึ่ง -->
-            <div class="bg-white p-6 rounded-xl shadow-md flex-grow overflow-hidden">
-                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+            <!-- Card: ระดับน้ำเจ้าพระยา (Sheet 2) - ใช้พื้นที่ครึ่งหนึ่ง (flex-grow) -->
+            <div class="bg-white p-6 rounded-xl shadow-md flex-grow flex flex-col overflow-hidden">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center flex-shrink-0">
                     <i data-lucide="Waves" class="w-5 h-5 mr-2 text-teal-600"></i>
                     ข้อมูลระดับน้ำเจ้าพระยา (4 จุด - 3 รอบ/วัน)
                 </h2>
                 <!-- Scrollable Table Container -->
-                 <div class="overflow-y-auto" style="max-height: calc(100% - 3rem);">
+                 <div class="overflow-y-auto flex-grow -mx-6 px-6">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
                             <tr>
@@ -549,14 +557,14 @@
                 </div>
             </div>
 
-            <!-- Card: สถานะปั๊ม (Sheet 3) - ใช้พื้นที่ครึ่งหนึ่ง -->
-            <div class="bg-white p-6 rounded-xl shadow-md flex-grow overflow-hidden">
-                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+            <!-- Card: สถานะปั๊ม (Sheet 3) - ใช้พื้นที่ครึ่งหนึ่ง (flex-grow) -->
+            <div class="bg-white p-6 rounded-xl shadow-md flex-grow flex flex-col overflow-hidden">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center flex-shrink-0">
                     <i data-lucide="Box" class="w-5 h-5 mr-2 text-indigo-600"></i>
                     การตรวจสอบเครื่องสูบน้ำ (14 สถานี)
                 </h2>
                 <!-- Scrollable Table Container -->
-                <div class="overflow-y-auto" style="max-height: calc(100% - 3rem);">
+                <div class="overflow-y-auto flex-grow -mx-6 px-6">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
                             <tr>
