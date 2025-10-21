@@ -128,20 +128,12 @@
         }
 
         /**
-         * ฟังก์ชันหลักในการดึงข้อมูลจาก Google Sheet (CSV)
+         * ฟังก์ชันหลักในการดึงข้อมูลจาก Google Sheet (CSV) - Reverted to simpler error handling
          */
         async function fetchDataFromSheet(url) {
             try {
                 const response = await fetch(url);
                 if (!response.ok) {
-                    // ตรวจจับ URL Placeholder ที่ไม่ถูกต้อง
-                    if (url.includes('{SHEET_ID_')) {
-                         console.error("Error: Placeholder URL detected. Please replace {SHEET_ID} and {GID} with your actual published Google Sheet URL.");
-                         // ส่งข้อมูล Error ที่จะถูกจับใน updateTable
-                         return [
-                            { [KEY_MAP.WATER_POINT]: 'N/A (Error: Placeholder URL)', [KEY_MAP.ALERT_LEVEL]: 'ไม่ได้เชื่อมต่อ' },
-                         ];
-                    }
                     throw new Error(`HTTP error! status: ${response.status} from ${url}`);
                 }
                 const csvText = await response.text();
@@ -189,7 +181,7 @@
                 const finalPm25 = isNaN(parseFloat(pm25Value)) ? "N/A" : parseFloat(pm25Value);
 
                 return {
-                    location: location,
+                    location: "จำลอง: ไม่สามารถเชื่อมต่อ API ได้", // Changed text slightly to keep it consistent with old version, 
                     pm25: finalPm25,
                     status: status, 
                     timestamp: timestamp
@@ -391,13 +383,11 @@
             const isPumpCardContainer = elementId === 'pump-status-card-container';
             const checkKey = isPumpCardContainer ? KEY_MAP.PUMP_STATION : KEY_MAP.WATER_POINT; 
             
-            // ตรวจสอบข้อมูล Error ที่มาจาก Placeholder URL หรือ HTTP Error
+            // ตรวจสอบข้อมูล Error ทั่วไป (Reverted to simpler check)
             const isError = data.length === 0 || (data.length > 0 && (data[0]?.[checkKey]?.includes('Error')));
 
             if (isError) {
-                const errorMessage = data.length > 0 && data[0]?.[checkKey]?.includes('Placeholder URL')
-                    ? 'ไม่สามารถดึงข้อมูล: กรุณาแทนที่ URL ตัวแทน {SHEET_ID_X} และ {GID_X} ด้วย URL ที่เผยแพร่จริง'
-                    : 'ไม่สามารถดึงข้อมูลจาก Google Sheet ได้ กรุณาตรวจสอบ URL และสถานะการเผยแพร่ (Publish to the web)';
+                const errorMessage = 'ไม่สามารถดึงข้อมูลจาก Google Sheet ได้ กรุณาตรวจสอบ URL และสถานะการเผยแพร่ (Publish to the web)';
                 
                 // สำหรับตาราง (Water Level - tbody)
                 if (!isPumpCardContainer) { 
@@ -463,6 +453,7 @@
                 statusText = 'ไม่สามารถดึงค่า PM 2.5 ได้';
             }
             
+            // Reverted to old logic for status text to align with the previous version's request
             const finalStatusText = data.status && data.status.length > 5 && !data.status.includes('จำลอง') ? data.status : statusText;
 
             card.innerHTML = `
@@ -589,7 +580,7 @@
             <i data-lucide="AlertTriangle" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
             <p>
                 **คำเตือน:** ตารางระดับน้ำยังไม่แสดงข้อมูล (Sheet 1 และ Sheet 2) โปรดแก้ไข URL ตัวอย่าง
-                (`GOOGLE_SHEET_URL_1` และ `2`) ในส่วน `<script>` 
+                (`GOOGLE_SHEET_URL_1`, `2`, และ `3`) ในส่วน `<script>` 
                 **และ** ตรวจสอบให้แน่ใจว่าคุณได้ **'เผยแพร่สู่เว็บ'** (Publish to the web) 
                 ของ Google Sheet ทั้งหมดแล้ว
             </p>
