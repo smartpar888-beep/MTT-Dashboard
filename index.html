@@ -8,6 +8,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons CDN -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- D3.js CDN for charts -->
+    <script src="https://d3js.org/d3.v7.min.js"></script> 
+    
     <style>
         /* กำหนดฟอนต์ Inter สำหรับ Tailwind (แนะนำสำหรับ UI) */
         :root {
@@ -37,8 +40,9 @@
             overflow: hidden; 
         }
         
-        /* ให้ Main Content ใช้พื้นที่ที่เหลือทั้งหมด */
-        .main-content-area {
+        /* ให้ Main Content ใช้พื้นที่ที่เหลือทั้งหมด และสามารถเลื่อนได้ */
+        .main-content-scroll {
+            overflow-y: auto;
             flex-grow: 1;
         }
 
@@ -47,6 +51,11 @@
             .pump-card-wrapper {
                 width: calc(33.333% - 0.5rem); /* 1/3 minus gap */
             }
+        }
+
+        /* สำหรับกราฟ: ซ่อนแกน Y ของ D3 เพื่อไม่ให้มีปัญหาเรื่องภาษา*/
+        #rainfall-chart-container text {
+            font-family: 'Inter', sans-serif;
         }
         
     </style>
@@ -64,6 +73,7 @@
         const GOOGLE_SHEET_URL_1 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT452CdpcF_hoA-_x3a6Ji0YKeWTuSr_9CM0We83aAAPiBWMRoHrKEujaYtEzHMZYMLEL8wKa10NPYF/pub?gid=675852265&single=true&output=csv"; // ตรวจวัดระดับ
         const GOOGLE_SHEET_URL_2 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT5OYSm3Hn1V4kegJf9x3iK2OGvUIL7vbnWryNUsx15VCm4NdxoVoWZMx1vWTlKcZskeD-YYjhbKn2V/pub?gid=202563025&single=true&output=csv"; // ข้อมูลระดับน้ำเจ้าพระยา
         const GOOGLE_SHEET_URL_3 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTyPcfGQReUPOHckF-6bA4UOucC8cbqRvHj-aTP7uWRkBjvQ4HrieGIhcet4OH9O0DjT_M2FM3QaaV9/pub?gid=273571070&single=true&output=csv"; // ข้อมูลการตรวจสอบการทำงานของเครื่องสูบน้ำ
+        const GOOGLE_SHEET_URL_4 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS5qwzKbaRjpA3iUXbyNMg9Y0tYdlVwykSAxz1V_CxMoT6PwnmMZjKvSNR2PpSWFjwbr9aG8uIU23tN/pub?gid=77454851&single=true&output=csv"; // ข้อมูลปริมาณน้ำฝน <-- NEW
         
         // ระยะเวลาการอัปเดต: 1 ชั่วโมง = 3600000 มิลลิวินาที
         const UPDATE_INTERVAL_MS = 3600000;
@@ -88,6 +98,11 @@
                 STATUS: 'สถานะปั๊ม',             // ชื่อคอลัมน์สำหรับสถานะปั๊ม
                 UPDATE: 'เวลาล่าสุด',             // ชื่อคอลัมน์สำหรับเวลาอัปเดต
                 INSPECTIONS: 'จำนวนครั้งการเข้าตรวจ', // คอลัมน์สำหรับจำนวนครั้งที่เข้าตรวจ (ใช้ใน Modal)
+            },
+             SHEET_4: {
+                POINT: 'จุดวัดประมาณน้ำฝน',     // ชื่อคอลัมน์ใน Sheet 4 สำหรับจุดวัด
+                AMOUNT: 'ปริมาณน้ำฝน',          // ชื่อคอลัมน์สำหรับปริมาณน้ำฝน (ใช้ทำ Bar Chart)
+                DURATION: 'ระยะเวลาฝนตก',       // ชื่อคอลัมน์สำหรับระยะเวลาฝนตก (ใช้ทำ Card)
             }
         };
 
@@ -118,6 +133,11 @@
             PUMP_STATUS: sanitizeText(USER_COLUMN_NAMES.SHEET_3.STATUS),
             LAST_UPDATE: sanitizeText(USER_COLUMN_NAMES.SHEET_3.UPDATE),
             INSPECTIONS: sanitizeText(USER_COLUMN_NAMES.SHEET_3.INSPECTIONS), 
+            
+            // Keys for Rainfall (Sheet 4) <-- NEW
+            RAIN_POINT: sanitizeText(USER_COLUMN_NAMES.SHEET_4.POINT), 
+            RAIN_AMOUNT: sanitizeText(USER_COLUMN_NAMES.SHEET_4.AMOUNT),
+            RAIN_DURATION: sanitizeText(USER_COLUMN_NAMES.SHEET_4.DURATION),
         };
 
         /**
@@ -128,9 +148,7 @@
             if (lines.length === 0) return [];
 
             const rawHeaders = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-            console.log("[DEBUG] Raw Headers from CSV:", rawHeaders);
             const cleanHeaders = rawHeaders.map(h => sanitizeText(h)); 
-            console.log("[DEBUG] Cleaned Headers (Used for KEY_MAP matching):", cleanHeaders);
             
             const result = [];
 
@@ -138,28 +156,23 @@
                 const obj = {};
                 const currentLine = lines[i];
                 
-                const values = currentLine.split(',').map(v => v.trim().replace(/"/g, ''));
+                // ใช้ Regular Expression เพื่อจัดการค่าที่มี comma ภายในเครื่องหมายคำพูด
+                // This is a basic split and might need adjustment if data is complex
+                const values = currentLine.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/"/g, ''));
                 
                 if (values.length === cleanHeaders.length) {
                     let hasRequiredKey = false;
                     for (let j = 0; j < cleanHeaders.length; j++) {
                         obj[cleanHeaders[j]] = values[j]; 
-                        // ตรวจสอบว่ามีคอลัมน์ที่จำเป็นสำหรับแสดงผลไหม
-                        if (cleanHeaders[j] === KEY_MAP.WATER_POINT || cleanHeaders[j] === KEY_MAP.PUMP_STATION) {
+                        // ตรวจสอบว่ามีคอลัมน์ที่จำเป็นสำหรับแสดงผลไหม (Water Point, Pump Station, หรือ Rain Point)
+                        if (cleanHeaders[j] === KEY_MAP.WATER_POINT || cleanHeaders[j] === KEY_MAP.PUMP_STATION || cleanHeaders[j] === KEY_MAP.RAIN_POINT) {
                              hasRequiredKey = true;
                         }
                     }
                     
-                    if (hasRequiredKey || i < 3) { // เก็บ 3 แถวแรกไว้ดีบักแม้จะไม่มีคีย์หลัก
+                    if (hasRequiredKey) {
                          result.push(obj);
-                    } else {
-                         console.warn(`[Parsing Warning] Skipping row ${i+1} due to missing required key (Water Point or Pump Station).`);
                     }
-
-                    if (result.length <= 3) {
-                        console.log(`[DEBUG] Parsed Object ${result.length}:`, obj);
-                    }
-
                 } else {
                     console.warn(`[Parsing Error] Skipping data line ${i+1}: Column count mismatch (${values.length} found, ${cleanHeaders.length} expected).`);
                 }
@@ -183,7 +196,7 @@
                 console.error("Error fetching or parsing sheet data:", error);
                 // ส่งข้อมูล Error ที่จะถูกจับใน updateTable
                 return [
-                    { [KEY_MAP.WATER_POINT]: 'N/A (Error)', [KEY_MAP.ALERT_LEVEL]: 'ไม่ได้เชื่อมต่อ' },
+                    { 'ERROR_KEY': 'N/A (Error)', [KEY_MAP.ALERT_LEVEL]: 'ไม่ได้เชื่อมต่อ' },
                 ];
             }
         }
@@ -203,10 +216,16 @@
         async function fetchPumpStatusData() {
             return fetchDataFromSheet(GOOGLE_SHEET_URL_3);
         }
+
+        async function fetchRainfallData() {
+            return fetchDataFromSheet(GOOGLE_SHEET_URL_4); // <-- NEW
+        }
         
         // =================================================================================================================================================
         // ส่วนที่ 4: ฟังก์ชันการแสดงผล (Rendering)
         // =================================================================================================================================================
+        
+        // ... (getAlertStyles, getDiffIcon, createWaterTableRow, createPumpStatusCard, showInspectionModal, closeInspectionModal) ...
         
         /**
          * แปลงระดับการแจ้งเตือนเป็นสีและไอคอน
@@ -332,11 +351,10 @@
             const safeStationName = pumpStation.replace(/'/g, "\\'");
             const safeInspectionCount = inspectionCount.replace(/'/g, "\\'");
             
-            // *** การปรับเปลี่ยนเพื่อรองรับการแสดงผล 3 คอลัมน์ ***
-            // ใช้คลาส pump-card-wrapper ที่ถูกกำหนดใน <style> ด้านบนเพื่อการรองรับ 3 คอลัมน์บนหน้าจอที่ใหญ่
+            // การปรับเปลี่ยนเพื่อรองรับการแสดงผล 3 คอลัมน์
             return `
                 <div 
-                    class="pump-card-wrapper p-3 ${bgColor} rounded-lg shadow-sm ring-1 ring-inset ring-opacity-50 flex items-start space-x-2 transition duration-200 hover:ring-2 hover:ring-offset-2 hover:ring-opacity-100 cursor-pointer w-full sm:w-[calc(50%-0.25rem)] lg:w-full xl:w-[calc(50%-0.25rem)] 2xl:w-[calc(33.333%-0.5rem)]"
+                    class="pump-card-wrapper p-3 ${bgColor} rounded-lg shadow-sm ring-1 ring-inset ring-opacity-50 flex items-start space-x-2 transition duration-200 hover:ring-2 hover:ring-offset-2 hover:ring-opacity-100 cursor-pointer w-full sm:w-[calc(50%-0.25rem)] xl:w-[calc(33.333%-0.5rem)]"
                     onclick="showInspectionModal('${safeStationName}', '${safeInspectionCount}')"
                 >
                     <i data-lucide="${icon}" class="w-4 h-4 mt-1 ${textColor} flex-shrink-0"></i> 
@@ -352,7 +370,6 @@
             `;
         }
 
-
         /**
          * แสดง Modal สำหรับจำนวนครั้งการเข้าตรวจ
          */
@@ -363,7 +380,6 @@
 
             if (modal && stationNameElement && inspectionCountElement) {
                 stationNameElement.textContent = stationName;
-                // แสดงค่าจำนวนครั้งที่ถูกส่งเข้ามา
                 inspectionCountElement.textContent = inspectionCount; 
                 modal.classList.remove('hidden');
                 modal.classList.add('flex');
@@ -381,6 +397,168 @@
             }
         }
 
+        /**
+         * สร้าง Card สำหรับระยะเวลาฝนตก (Sheet 4) <-- NEW
+         */
+        function createRainDurationCard(data) {
+            // หาค่า ระยะเวลาฝนตก จากแถวแรกที่มีข้อมูล
+            let duration = 'N/A';
+            if (data.length > 0) {
+                duration = data[0][KEY_MAP.RAIN_DURATION] || 'N/A';
+            }
+
+            const durationDisplay = parseFloat(duration).toFixed(0);
+            const isValidDuration = !isNaN(parseFloat(duration));
+            
+            const displayValue = isValidDuration ? durationDisplay : 'N/A';
+            const bgColor = isValidDuration ? 'bg-sky-500' : 'bg-gray-400';
+            const icon = isValidDuration ? 'Clock' : 'AlertOctagon';
+            const shadow = isValidDuration ? 'shadow-lg shadow-sky-500/50' : 'shadow-md';
+
+            const cardHtml = `
+                <div class="w-48 p-4 ${bgColor} text-white rounded-xl ${shadow} transition duration-300">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-medium opacity-80">ระยะเวลาฝนตก</span>
+                        <i data-lucide="${icon}" class="w-4 h-4"></i>
+                    </div>
+                    <div class="flex items-end justify-start space-x-1">
+                        <span class="text-4xl font-extrabold leading-none">
+                            ${displayValue}
+                        </span>
+                        <span class="text-lg font-bold leading-tight pb-0.5">
+                            นาที
+                        </span>
+                    </div>
+                </div>
+            `;
+
+            const container = document.getElementById('rain-duration-card-container');
+            if (container) {
+                container.innerHTML = cardHtml;
+                lucide.createIcons();
+            }
+        }
+        
+        /**
+         * วาดกราฟแท่งปริมาณน้ำฝนโดยใช้ D3.js (Sheet 4) <-- NEW
+         */
+        function drawRainfallBarChart(data) {
+            const containerId = '#rainfall-chart-container';
+            const container = document.querySelector(containerId);
+            
+            // 1. เตรียมข้อมูล
+            const chartData = data
+                .map(d => ({
+                    point: d[KEY_MAP.RAIN_POINT] || 'N/A',
+                    amount: parseFloat(d[KEY_MAP.RAIN_AMOUNT])
+                }))
+                .filter(d => !isNaN(d.amount) && d.point !== 'N/A' && d.amount >= 0);
+
+            // ล้าง SVG เก่า
+            d3.select(containerId).select("svg").remove();
+
+            if (chartData.length === 0) {
+                container.innerHTML = `<div class="p-8 text-center text-gray-500">ไม่พบข้อมูลปริมาณน้ำฝนที่ถูกต้องสำหรับการแสดงผลกราฟ</div>`;
+                return;
+            }
+            
+            // 2. กำหนดขนาดและขอบเขต
+            const margin = { top: 20, right: 30, bottom: 80, left: 60 };
+            const initialWidth = container.clientWidth;
+            const initialHeight = container.clientHeight;
+            
+            // ตรวจสอบขั้นต่ำของความสูงและความกว้าง
+            const width = Math.max(initialWidth - margin.left - margin.right, 300);
+            const height = Math.max(initialHeight - margin.top - margin.bottom, 300);
+
+            // 3. สร้าง SVG Element
+            const svg = d3.select(containerId)
+                .append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
+                .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+                
+            // 4. กำหนด Scale
+            // Scale X (ชื่อจุดวัด - Categorical)
+            const x = d3.scaleBand()
+                .domain(chartData.map(d => d.point))
+                .range([0, width])
+                .padding(0.3);
+
+            // Scale Y (ปริมาณน้ำฝน - Linear)
+            const y = d3.scaleLinear()
+                .domain([0, d3.max(chartData, d => d.amount) * 1.1]) 
+                .range([height, 0]);
+
+            // 5. วาด Axis
+            // X-Axis
+            svg.append("g")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x))
+                .selectAll("text")
+                .attr("transform", "translate(-10,0)rotate(-45)") // เอียงชื่อจุดวัด
+                .style("text-anchor", "end")
+                .style("font-size", "12px");
+
+            // Y-Axis
+            svg.append("g")
+                .call(d3.axisLeft(y).ticks(5))
+                .style("font-size", "12px");
+
+            // Y-Axis Label
+            svg.append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 0 - margin.left + 5)
+                .attr("x", 0 - (height / 2))
+                .attr("dy", "1em")
+                .style("text-anchor", "middle")
+                .style("font-size", "14px")
+                .style("fill", "#4b5563")
+                .text("ปริมาณน้ำฝน (มม.)"); 
+
+            // 6. วาด Bar
+            svg.selectAll(".bar")
+                .data(chartData)
+                .enter().append("rect")
+                .attr("class", "bar")
+                .attr("x", d => x(d.point))
+                .attr("y", height) 
+                .attr("width", x.bandwidth())
+                .attr("height", 0) 
+                .attr("fill", "#0ea5e9") // sky-500
+                .attr("rx", 4) // Rounded corners
+                .transition() 
+                .duration(800)
+                .delay((d, i) => i * 100)
+                .attr("y", d => y(d.amount))
+                .attr("height", d => height - y(d.amount));
+                
+            // 7. เพิ่ม Text Label บน Bar
+            svg.selectAll(".label")
+                .data(chartData)
+                .enter().append("text")
+                .attr("class", "label")
+                .attr("x", d => x(d.point) + x.bandwidth() / 2)
+                .attr("y", d => y(d.amount))
+                .attr("dy", "-0.5em") 
+                .attr("text-anchor", "middle")
+                .style("font-size", "10px")
+                .style("font-weight", "bold")
+                .style("fill", "#1e293b") 
+                .text(d => d.amount.toFixed(2));
+                
+            // Optional: Add resize listener for responsiveness (Simple approach)
+            function handleResize() {
+                // Redraw chart completely on resize (simple, but effective)
+                if (container.clientWidth > 0 && container.clientHeight > 0) {
+                    drawRainfallBarChart(data);
+                }
+            }
+            window.removeEventListener('resize', handleResize);
+            window.addEventListener('resize', handleResize);
+        }
 
         /**
          * อัปเดตส่วนแสดงผลระดับน้ำและเครื่องสูบน้ำ
@@ -392,16 +570,18 @@
             container.innerHTML = ''; // ล้างข้อมูลเก่า
             
             const isPumpCardContainer = elementId === 'pump-status-card-container';
-            const checkKey = isPumpCardContainer ? KEY_MAP.PUMP_STATION : KEY_MAP.WATER_POINT; 
+            // ตรวจสอบคีย์หลัก: Water Point, Pump Station, หรือ Rain Point
+            const checkKey = isPumpCardContainer ? KEY_MAP.PUMP_STATION : 
+                             (elementId === 'water-level-table-body' || elementId === 'chaophraya-table-body' ? KEY_MAP.WATER_POINT : null);
             
             // ตรวจสอบข้อมูล Error ทั่วไป
-            const isError = data.length === 0 || (data.length > 0 && (data[0]?.[checkKey]?.includes('Error')));
+            const isError = data.length === 0 || (data.length > 0 && (data[0]?.['ERROR_KEY'] || '').includes('Error'));
 
             if (isError) {
                 const errorMessage = 'ไม่สามารถดึงข้อมูลจาก Google Sheet ได้ กรุณาตรวจสอบ URL, สถานะการเผยแพร่ และชื่อคอลัมน์ในส่วน USER_COLUMN_NAMES';
                 
                 // สำหรับตาราง (Water Level - tbody)
-                if (!isPumpCardContainer) { 
+                if (!isPumpCardContainer && checkKey) { 
                     const colSpan = 4;
                     container.innerHTML = `
                         <tr>
@@ -423,12 +603,17 @@
             } else {
                 // Render data
                 data.forEach(item => {
-                    // ใช้ KEY_MAP.WATER_POINT หรือ KEY_MAP.PUMP_STATION เพื่อยืนยันว่าข้อมูลครบถ้วน
-                    if (!item[checkKey]) {
+                    if (checkKey && !item[checkKey]) {
                          console.warn(`Skipping row: Key '${checkKey}' is missing in sheet data. Check column names in USER_COLUMN_NAMES.`);
                          return; 
                     }
-                    container.innerHTML += rowCreator(item);
+                    if (isPumpCardContainer) {
+                        // For pump cards, append the card HTML directly
+                        container.innerHTML += rowCreator(item);
+                    } else if (checkKey) {
+                        // For table rows, append the row HTML directly
+                        container.innerHTML += rowCreator(item);
+                    }
                 });
             }
 
@@ -458,17 +643,23 @@
                 const [
                     waterLevelData, 
                     chaoPhrayaData, 
-                    pumpStatusData
+                    pumpStatusData,
+                    rainfallData
                 ] = await Promise.all([
                     fetchWaterLevelData(),
                     fetchChaoPhrayaData(),
-                    fetchPumpStatusData()
+                    fetchPumpStatusData(),
+                    fetchRainfallData() // <-- NEW
                 ]);
 
                 // 2. อัปเดตส่วนแสดงผล
                 updateTable('water-level-table-body', waterLevelData, createWaterTableRow);
                 updateTable('chaophraya-table-body', chaoPhrayaData, createWaterTableRow);
                 updateTable('pump-status-card-container', pumpStatusData, createPumpStatusCard); 
+                
+                // อัปเดตส่วนปริมาณน้ำฝน
+                createRainDurationCard(rainfallData);
+                drawRainfallBarChart(rainfallData);
                 
                 // 3. อัปเดตเวลาล่าสุด
                 const now = new Date();
@@ -532,53 +723,20 @@
             </div>
         </div>
     </header>
-
-    <!-- Main Content Grid -->
-    <main class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 main-content-area">
-        
-        <!-- Column 1 (Wide): สถานะการตรวจวัดระดับ (Sheet 1) ใช้พื้นที่ 2/3 บน XL -->
-        <div class="lg:col-span-1 xl:col-span-2 bg-white p-6 rounded-xl shadow-md flex-grow flex flex-col overflow-hidden">
-            <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center flex-shrink-0">
-                <i data-lucide="Gauge" class="w-5 h-5 mr-2 text-blue-600"></i>
-                สถานะการตรวจวัดระดับน้ำ (4 จุด - 4 รอบ/วัน)
-            </h2>
-            <!-- Scrollable Table Container -->
-            <div class="overflow-y-auto flex-grow -mx-6 px-6"> 
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
-                        <tr>
-                            <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                จุดวัด
-                            </th>
-                            <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                ระดับน้ำปัจจุบัน
-                            </th>
-                            <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                ส่วนต่าง (เทียบครั้งก่อน)
-                            </th>
-                            <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                ระดับการแจ้งเตือน
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody id="water-level-table-body" class="bg-white divide-y divide-gray-200">
-                        <!-- Data rows will be injected by JavaScript -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Column 2 (Narrow): Chao Phraya (Sheet 2) & Pump Status (Sheet 3) ใช้พื้นที่ 1/3 บน XL -->
-        <div class="lg:col-span-1 xl:col-span-1 flex flex-col space-y-6 h-full">
+    
+    <!-- Main Content Container with Scrolling -->
+    <div class="main-content-scroll">
+        <!-- Main Content Grid -->
+        <main class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
             
-            <!-- Card: ระดับน้ำเจ้าพระยา (Sheet 2) -->
-            <div class="bg-white p-6 rounded-xl shadow-md flex-grow flex flex-col overflow-hidden">
+            <!-- Column 1 (Wide): สถานะการตรวจวัดระดับ (Sheet 1) ใช้พื้นที่ 2/3 บน XL -->
+            <div class="lg:col-span-1 xl:col-span-2 bg-white p-6 rounded-xl shadow-md flex flex-col overflow-hidden h-full min-h-[400px]">
                 <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center flex-shrink-0">
-                    <i data-lucide="Waves" class="w-5 h-5 mr-2 text-teal-600"></i>
-                    ข้อมูลระดับน้ำเจ้าพระยา (4 จุด - 3 รอบ/วัน)
+                    <i data-lucide="Gauge" class="w-5 h-5 mr-2 text-blue-600"></i>
+                    สถานะการตรวจวัดระดับน้ำ (4 จุด - 4 รอบ/วัน)
                 </h2>
                 <!-- Scrollable Table Container -->
-                 <div class="overflow-y-auto flex-grow -mx-6 px-6">
+                <div class="overflow-y-auto flex-grow -mx-6 px-6"> 
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
                             <tr>
@@ -586,39 +744,94 @@
                                     จุดวัด
                                 </th>
                                 <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    ระดับน้ำ
+                                    ระดับน้ำปัจจุบัน
                                 </th>
                                 <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    ส่วนต่าง
+                                    ส่วนต่าง (เทียบครั้งก่อน)
                                 </th>
                                 <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    แจ้งเตือน
+                                    ระดับการแจ้งเตือน
                                 </th>
                             </tr>
                         </thead>
-                        <tbody id="chaophraya-table-body" class="bg-white divide-y divide-gray-200">
+                        <tbody id="water-level-table-body" class="bg-white divide-y divide-gray-200">
                             <!-- Data rows will be injected by JavaScript -->
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- Card: สถานะปั๊ม (Sheet 3) - ปรับเป็น Card Layout -->
-            <div class="bg-white p-6 rounded-xl shadow-md flex-grow flex flex-col">
+            <!-- Column 2 (Narrow): Chao Phraya (Sheet 2) & Pump Status (Sheet 3) ใช้พื้นที่ 1/3 บน XL -->
+            <div class="lg:col-span-1 xl:col-span-1 flex flex-col space-y-6 h-full">
+                
+                <!-- Card: ระดับน้ำเจ้าพระยา (Sheet 2) -->
+                <div class="bg-white p-6 rounded-xl shadow-md flex flex-col overflow-hidden flex-shrink-0">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center flex-shrink-0">
+                        <i data-lucide="Waves" class="w-5 h-5 mr-2 text-teal-600"></i>
+                        ข้อมูลระดับน้ำเจ้าพระยา (4 จุด - 3 รอบ/วัน)
+                    </h2>
+                    <!-- Scrollable Table Container -->
+                    <div class="overflow-y-auto flex-grow -mx-6 px-6">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
+                                <tr>
+                                    <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        จุดวัด
+                                    </th>
+                                    <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        ระดับน้ำ
+                                    </th>
+                                    <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        ส่วนต่าง
+                                    </th>
+                                    <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        แจ้งเตือน
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="chaophraya-table-body" class="bg-white divide-y divide-gray-200">
+                                <!-- Data rows will be injected by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Card: สถานะปั๊ม (Sheet 3) - ปรับเป็น 3 คอลัมน์ -->
+                <div class="bg-white p-6 rounded-xl shadow-md flex-grow flex flex-col min-h-[300px]">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center flex-shrink-0">
+                        <i data-lucide="Box" class="w-5 h-5 mr-2 text-indigo-600"></i>
+                        สถานะเครื่องสูบน้ำ (14 สถานี)
+                    </h2>
+                    <!-- Card Container: ปรับเป็น 3 คอลัมน์ (sm:2, xl:3) -->
+                    <div id="pump-status-card-container" class="flex flex-wrap gap-2 overflow-y-auto p-1 -m-1 flex-grow justify-start">
+                        <!-- Cards will be injected by JavaScript -->
+                    </div>
+                </div>
+
+            </div>
+            
+            <!-- New Section: Rainfall Monitoring (Sheet 4) - Spans all columns -->
+            <div class="lg:col-span-2 xl:col-span-3 bg-white p-6 rounded-xl shadow-md flex flex-col mt-6">
                 <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center flex-shrink-0">
-                    <i data-lucide="Box" class="w-5 h-5 mr-2 text-indigo-600"></i>
-                    สถานะเครื่องสูบน้ำ (14 สถานี)
+                    <i data-lucide="CloudRain" class="w-5 h-5 mr-2 text-sky-600"></i>
+                    ปริมาณและระยะเวลาฝนตก (มม.)
                 </h2>
-                <!-- Card Container: ปรับให้มีการแบ่งคอลัมน์ในขนาดหน้าจอที่ใหญ่ขึ้น -->
-                <!-- flex-wrap เพื่อให้ขึ้นแถวใหม่เมื่อไม่มีพื้นที่ -->
-                <div id="pump-status-card-container" class="flex flex-wrap gap-2 overflow-y-auto p-1 -m-1 flex-grow justify-start">
-                    <!-- Cards will be injected by JavaScript -->
+                <div class="relative flex-grow min-h-[450px]">
+                    <!-- Rain Duration Card (Top Right) -->
+                    <div id="rain-duration-card-container" class="absolute top-0 right-0 z-20">
+                        <!-- Card will be injected here -->
+                    </div>
+                    <!-- Bar Chart Container: pt-16 เพื่อเว้นพื้นที่ให้ Card ด้านบน -->
+                    <div id="rainfall-chart-container" class="w-full h-full pt-16"> 
+                        <!-- Chart will be drawn here -->
+                    </div>
                 </div>
             </div>
 
-        </div>
-    </main>
+        </main>
+    </div>
 
+    <!-- Footer Section -->
     <footer class="mt-4 flex-shrink-0 text-center text-sm text-gray-400">
         <p>Dashboard Powered by Gemini and deployed on GitHub Pages.</p>
         <p class="mt-1 font-semibold text-gray-600">
