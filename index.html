@@ -54,7 +54,7 @@
         // *************************************************************************************************************************************************
         // ** สำคัญ: กรุณาแทนที่ URL ตัวอย่างเหล่านี้ด้วย URL จริงของ Google Sheets ที่คุณเผยแพร่เป็น CSV และ Dustboy API URL **
         // *************************************************************************************************************************************************
-        const GOOGLE_SHEET_URL_1 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT452CdpcF_hoA-_x3a6Ji0YKeWTuSr_9CM0We83aAAPiBWMRoHrKEujaYtEzHMZYMLEL8wKa10NPYF/pub?gid=675852265&single=true&output=csv"; // ตรวจวัดระดับ
+         const GOOGLE_SHEET_URL_1 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT452CdpcF_hoA-_x3a6Ji0YKeWTuSr_9CM0We83aAAPiBWMRoHrKEujaYtEzHMZYMLEL8wKa10NPYF/pub?gid=675852265&single=true&output=csv"; // ตรวจวัดระดับ
         const GOOGLE_SHEET_URL_2 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT5OYSm3Hn1V4kegJf9x3iK2OGvUIL7vbnWryNUsx15VCm4NdxoVoWZMx1vWTlKcZskeD-YYjhbKn2V/pub?gid=202563025&single=true&output=csv"; // ข้อมูลระดับน้ำเจ้าพระยา
         const GOOGLE_SHEET_URL_3 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTyPcfGQReUPOHckF-6bA4UOucC8cbqRvHj-aTP7uWRkBjvQ4HrieGIhcet4OH9O0DjT_M2FM3QaaV9/pub?gid=273571070&single=true&output=csv"; // ข้อมูลการตรวจสอบการทำงานของเครื่องสูบน้ำ
         const DUSTBOY_API_URL = "https://api.example.com/dustboy/latest_data"; // URL สำหรับ Dustboy API (โปรดแทนที่ด้วย URL จริง)
@@ -85,7 +85,8 @@
          */
         const KEY_MAP = {
             // Keys for Water Level (Sheet 1 & 2)
-            WATER_POINT: sanitizeText('จุดวัดระดับน้ำ'),
+            // ใช้ 'จุดวัด' ซึ่งเป็นคีย์ที่สั้นลงและมักใช้ใน Sheet 2
+            WATER_POINT: sanitizeText('จุดวัด'), 
             CURRENT_LEVEL: sanitizeText('ระดับน้ำปัจจุบัน'),
             DIFF_LEVEL: sanitizeText('ส่วนต่างระดับน้ำ'),
             ALERT_LEVEL: sanitizeText('ระดับการแจ้งเตือน'),
@@ -94,7 +95,7 @@
             PUMP_STATION: sanitizeText('สถานีสูบน้ำ'),
             PUMP_STATUS: sanitizeText('สถานะปั๊ม'),
             LAST_UPDATE: sanitizeText('เวลาล่าสุด'),
-            INSPECTIONS: sanitizeText('จำนวนครั้งที่เข้าตรวจ'),
+            INSPECTIONS: sanitizeText('จำนวนครั้งการเข้าตรวจ'), // คีย์สำหรับจำนวนครั้งที่เข้าตรวจ
         };
 
         /**
@@ -130,7 +131,8 @@
                     console.warn(`[Parsing Error] Skipping data line ${i+1}: Column count mismatch. Expected ${cleanHeaders.length}, Got ${values.length}. Line: "${currentLine}"`);
                 }
             }
-            console.log("Parsed Clean Headers (Key Names):", cleanHeaders);
+            // แสดงผล Header ที่ถูกทำความสะอาดแล้วเพื่อช่วยในการดีบัก
+            console.log("Parsed Clean Headers (Key Names):", cleanHeaders); 
             console.log(`Successfully parsed ${result.length} data rows.`);
             return result;
         }
@@ -152,6 +154,7 @@
                 console.error("Error fetching or parsing sheet data:", error);
                 // ข้อมูลจำลองเมื่อดึงข้อมูลไม่ได้ - ใช้คีย์ที่ถูก sanitize แล้ว
                 return [
+                    // ใช้ KEY_MAP.WATER_POINT เป็นคีย์หลักในการตรวจสอบข้อผิดพลาดของตารางน้ำ
                     { [KEY_MAP.WATER_POINT]: 'N/A (Error)', [KEY_MAP.ALERT_LEVEL]: 'ไม่ได้เชื่อมต่อ' },
                 ];
             }
@@ -272,13 +275,31 @@
             const diffValue = data[KEY_MAP.DIFF_LEVEL] || '0.00';
             const diffIcon = getDiffIcon(diffValue);
 
+            // ******* LOGIC สำหรับการกำหนดหน่วย: รทก./MSL. สำหรับระดับ, ลบ.ม./วินาที สำหรับปริมาณ *******
+            const currentLevelValue = data[KEY_MAP.CURRENT_LEVEL];
+            const numLevel = parseFloat(currentLevelValue);
+            
+            // หน่วยเริ่มต้นคือ รทก./MSL. (ระดับน้ำทะเลปานกลาง)
+            let unit = 'รทก./MSL.'; 
+
+            // ตรวจสอบค่า ถ้า >= 100 แสดงว่าเป็นปริมาณน้ำไหล (ลบ.ม./วินาที)
+            if (!isNaN(numLevel) && numLevel >= 100) {
+                unit = 'ลบ.ม./วินาที';
+            } else if (isNaN(numLevel) && currentLevelValue !== 'N/A') {
+                // กรณีที่เป็นข้อความที่ไม่ได้เป็น 'N/A' ให้ละเว้นหน่วยเพื่อความชัดเจน
+                unit = ''; 
+            }
+            
+            const displayLevel = currentLevelValue || 'N/A';
+            // ******* LOGIC สิ้นสุด *******
+
             return `
                 <tr class="border-b hover:bg-gray-50 transition duration-150">
                     <td class="p-4 whitespace-nowrap font-medium text-gray-900">
                         ${data[KEY_MAP.WATER_POINT] || 'N/A'} 
                     </td>
                     <td class="p-4 whitespace-nowrap text-lg font-bold text-gray-900">
-                        ${data[KEY_MAP.CURRENT_LEVEL] || 'N/A'} ม.
+                        ${displayLevel} ${unit}
                     </td>
                     <td class="p-4 whitespace-nowrap text-gray-600">
                         <div class="flex items-center space-x-2">
@@ -299,69 +320,139 @@
         }
         
         /**
-         * สร้างแถวตารางสำหรับข้อมูลสถานะปั๊ม (Sheet 3)
+         * สร้าง Card สำหรับข้อมูลสถานะปั๊ม (Sheet 3)
+         * แสดงเฉพาะชื่อสถานีและสถานะ (สีเขียว/แดง)
          */
-        function createPumpTableRow(data) {
+        function createPumpStatusCard(data) {
             // ใช้ KEY_MAP ที่กำหนดไว้แล้ว
+            const pumpStation = data[KEY_MAP.PUMP_STATION] || 'N/A';
             const pumpStatus = data[KEY_MAP.PUMP_STATUS] || 'ไม่พบสถานะ';
-            const alertStyles = getAlertStyles(pumpStatus);
-            const lastUpdate = data[KEY_MAP.LAST_UPDATE] || 'N/A';
-            const dailyInspections = data[KEY_MAP.INSPECTIONS] || '0'; 
+            const inspectionCount = data[KEY_MAP.INSPECTIONS] || '0'; // ดึงจำนวนครั้งการเข้าตรวจ
+            
+            // ทำความสะอาด string ก่อนการเปรียบเทียบ
+            const sanitizedStatus = sanitizeText(pumpStatus);
 
+            let bgColor = 'bg-gray-100';
+            let textColor = 'text-gray-800';
+            let icon = 'Info';
+
+            // Color Logic based on user request: เขียว = ปกติ, แดง = ผิดปกติ/ไม่ทำงาน
+            if (sanitizedStatus.includes('ปกติ') || sanitizedStatus.includes('ทำงาน')) {
+                bgColor = 'bg-green-100';
+                textColor = 'text-green-800';
+                icon = 'CheckCircle';
+            } else if (sanitizedStatus.includes('ผิดปกติ') || sanitizedStatus.includes('วิกฤติ') || sanitizedStatus.includes('ไม่ทำงาน') || sanitizedStatus.includes('แจ้งเตือน')) {
+                bgColor = 'bg-red-100';
+                textColor = 'text-red-800';
+                icon = 'AlertTriangle';
+            } else {
+                // สถานะอื่น ๆ เช่น 'เฝ้าระวัง' หรือ 'N/A'
+                bgColor = 'bg-yellow-100';
+                textColor = 'text-yellow-800';
+                icon = 'Eye';
+            }
+
+            // ต้อง Escape single quotes สำหรับใช้ใน onclick attribute
+            const safeStationName = pumpStation.replace(/'/g, "\\'");
+            const safeInspectionCount = inspectionCount.replace(/'/g, "\\'");
+            
+            // เพิ่ม onclick เพื่อเรียก Modal
             return `
-                <tr class="border-b hover:bg-gray-50 transition duration-150">
-                    <td class="p-4 whitespace-nowrap font-medium text-gray-900">
-                        ${data[KEY_MAP.PUMP_STATION] || 'N/A'}
-                    </td>
-                    <td class="p-4 whitespace-nowrap">
-                        <span class="status-badge ${alertStyles.color} ring-1 ring-inset">
-                            <i data-lucide="${alertStyles.icon}" class="w-3 h-3 mr-1"></i>
-                            ${pumpStatus}
-                        </span>
-                    </td>
-                    <td class="p-4 whitespace-nowrap text-sm text-gray-500">
-                        ${lastUpdate}
-                    </td>
-                    <td class="p-4 whitespace-nowrap text-sm font-semibold text-gray-700">
-                        ${dailyInspections} ครั้ง
-                    </td>
-                </tr>
+                <div 
+                    class="p-3 ${bgColor} rounded-lg shadow-sm ring-1 ring-inset ring-opacity-50 flex items-center space-x-2 transition duration-200 hover:ring-2 hover:ring-offset-2 hover:ring-opacity-100 cursor-pointer"
+                    onclick="showInspectionModal('${safeStationName}', '${safeInspectionCount}')"
+                >
+                    <i data-lucide="${icon}" class="w-4 h-4 ${textColor}"></i>
+                    <span class="text-sm font-semibold ${textColor} whitespace-nowrap">
+                        ${pumpStation}
+                    </span>
+                    <span class="text-xs ${textColor} opacity-75 hidden sm:inline">
+                        (${pumpStatus})
+                    </span>
+                </div>
             `;
         }
 
 
         /**
+         * แสดง Modal สำหรับจำนวนครั้งการเข้าตรวจ
+         * @param {string} stationName - ชื่อสถานี
+         * @param {string} inspectionCount - จำนวนครั้งการเข้าตรวจ
+         */
+        function showInspectionModal(stationName, inspectionCount) {
+            const modal = document.getElementById('inspection-modal');
+            const stationNameElement = document.getElementById('modal-station-name');
+            const inspectionCountElement = document.getElementById('modal-inspection-count');
+
+            if (modal && stationNameElement && inspectionCountElement) {
+                stationNameElement.textContent = stationName;
+                inspectionCountElement.textContent = inspectionCount;
+                // แสดง Modal
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+        }
+
+        /**
+         * ซ่อน Modal สำหรับจำนวนครั้งการเข้าตรวจ
+         */
+        function closeInspectionModal() {
+            const modal = document.getElementById('inspection-modal');
+            if (modal) {
+                // ซ่อน Modal
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+
+        /**
          * อัปเดตส่วนแสดงผลระดับน้ำและเครื่องสูบน้ำ
+         * ปรับปรุงให้รองรับทั้ง Table Body และ Card Container (สำหรับสถานะปั๊ม)
          */
         function updateTable(elementId, data, rowCreator) {
-            const tableBody = document.getElementById(elementId);
-            if (!tableBody) return;
+            const container = document.getElementById(elementId);
+            if (!container) return;
             
-            tableBody.innerHTML = ''; // ล้างข้อมูลเก่า
+            container.innerHTML = ''; // ล้างข้อมูลเก่า
             
-            const isPumpTable = elementId === 'pump-status-table-body';
-            const colSpan = isPumpTable ? 4 : 4; 
+            // ตรวจสอบว่าเป็น Card Container สำหรับปั๊มหรือไม่
+            const isPumpCardContainer = elementId === 'pump-status-card-container';
             
             // ตรวจสอบข้อมูล Error โดยอิงจากคีย์ที่ถูก sanitize แล้ว
-            const checkKey = isPumpTable ? KEY_MAP.PUMP_STATION : KEY_MAP.CURRENT_LEVEL;
+            const checkKey = isPumpCardContainer ? KEY_MAP.PUMP_STATION : KEY_MAP.WATER_POINT; 
+            const isError = data.length === 0 || (data.length > 0 && data[0]?.[checkKey]?.includes('Error'));
 
-            if (data.length === 0 || (data.length > 0 && data[0]?.[checkKey]?.includes('Error'))) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="${colSpan}" class="p-8 text-center text-red-500 bg-red-50/50">
+            if (isError) {
+                // สำหรับตาราง (Water Level - tbody)
+                if (!isPumpCardContainer) { 
+                    const colSpan = 4;
+                    container.innerHTML = `
+                        <tr>
+                            <td colspan="${colSpan}" class="p-8 text-center text-red-500 bg-red-50/50">
+                                <i data-lucide="CloudOff" class="w-6 h-6 mx-auto mb-2"></i>
+                                ไม่สามารถดึงข้อมูลจาก Google Sheet ได้ กรุณาตรวจสอบ URL และสถานะการเผยแพร่ (Publish to the web)
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    // สำหรับ Card Container (Pump Status - div)
+                    container.innerHTML = `
+                        <div class="w-full p-4 text-center text-red-500 bg-red-50/50 rounded-lg">
                             <i data-lucide="CloudOff" class="w-6 h-6 mx-auto mb-2"></i>
-                            ไม่สามารถดึงข้อมูลจาก Google Sheet ได้ กรุณาตรวจสอบ URL และสถานะการเผยแพร่ (Publish to the web)
-                        </td>
-                    </tr>
-                `;
+                            ไม่สามารถดึงข้อมูลสถานะปั๊มได้
+                        </div>
+                    `;
+                }
             } else {
+                // Render data
                 data.forEach(item => {
-                    // ตรวจสอบว่าคีย์หลักของตารางปั๊มมีค่าหรือไม่
-                    if (isPumpTable && !item[KEY_MAP.PUMP_STATION]) {
-                         console.warn("Skipping row: Pump station name is missing or key mismatch.");
-                         return; // ข้ามแถวที่คีย์หลักไม่ถูกต้อง
+                    // ตรวจสอบว่าคีย์หลักของตารางมีค่าหรือไม่
+                    if (!item[checkKey]) {
+                         console.warn(`Skipping row: Key '${checkKey}' is missing or key mismatch in sheet data.`);
+                         return; 
                     }
-                    tableBody.innerHTML += rowCreator(item);
+                    container.innerHTML += rowCreator(item);
                 });
             }
 
@@ -410,7 +501,7 @@
         }
 
         // =================================================================================================================================================
-        // ส่วนที่ 5: ฟังก์ชันหลักในการอัปเดต Dashboard (ไม่เปลี่ยนแปลง)
+        // ส่วนที่ 5: ฟังก์ชันหลักในการอัปเดต Dashboard (ปรับปรุงการเรียกใช้สำหรับสถานะปั๊ม)
         // =================================================================================================================================================
 
         let isUpdating = false;
@@ -445,7 +536,10 @@
                 // 2. อัปเดตส่วนแสดงผล
                 updateTable('water-level-table-body', waterLevelData, createWaterTableRow);
                 updateTable('chaophraya-table-body', chaoPhrayaData, createWaterTableRow);
-                updateTable('pump-status-table-body', pumpStatusData, createPumpTableRow);
+                
+                // *** เปลี่ยนการเรียกใช้สำหรับสถานะปั๊ม: เปลี่ยน ID และใช้ Card Creator Function ***
+                updateTable('pump-status-card-container', pumpStatusData, createPumpStatusCard); 
+                
                 updateDustboyCard(dustboyData);
                 
                 // 3. อัปเดตเวลาล่าสุด
@@ -488,6 +582,13 @@
 
             // 3. ผูกปุ่มรีเฟรช
             document.getElementById('refresh-button').addEventListener('click', updateDashboard);
+            
+            // 4. ผูกปุ่มปิด Modal (เมื่อคลิกที่พื้นหลัง Modal)
+            document.getElementById('inspection-modal').addEventListener('click', (event) => {
+                if (event.target.id === 'inspection-modal' || event.target.closest('#modal-close-button')) {
+                    closeInspectionModal();
+                }
+            });
         });
 
     </script>
@@ -607,35 +708,15 @@
                 </div>
             </div>
 
-            <!-- Card: สถานะปั๊ม (Sheet 3) -->
-            <div class="bg-white p-6 rounded-xl shadow-md flex-grow flex flex-col overflow-hidden">
+            <!-- Card: สถานะปั๊ม (Sheet 3) - ปรับเป็น Card Layout -->
+            <div class="bg-white p-6 rounded-xl shadow-md flex-grow flex flex-col">
                 <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center flex-shrink-0">
                     <i data-lucide="Box" class="w-5 h-5 mr-2 text-indigo-600"></i>
-                    การตรวจสอบเครื่องสูบน้ำ (14 สถานี)
+                    สถานะเครื่องสูบน้ำ (14 สถานี)
                 </h2>
-                <!-- Scrollable Table Container -->
-                <div class="overflow-y-auto flex-grow -mx-6 px-6">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
-                            <tr>
-                                <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    สถานี
-                                </th>
-                                <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    สถานะ
-                                </th>
-                                <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    เวลาล่าสุด
-                                </th>
-                                <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    การตรวจต่อวัน
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody id="pump-status-table-body" class="bg-white divide-y divide-gray-200">
-                            <!-- Data rows will be injected by JavaScript -->
-                        </tbody>
-                    </table>
+                <!-- Card Container: ใช้ flex-wrap และ gap เพื่อให้เรียงต่อกันตามแนวนอน -->
+                <div id="pump-status-card-container" class="flex flex-wrap gap-2 overflow-y-auto p-1 -m-1 flex-grow">
+                    <!-- Cards will be injected by JavaScript -->
                 </div>
             </div>
 
@@ -648,6 +729,43 @@
             โปรดจำไว้ว่าคุณต้องแทนที่ URL ตัวอย่างในโค้ดด้วยลิงก์ Google Sheet ที่เผยแพร่แล้ว และ Dustboy API จริง
         </p>
     </footer>
+
+    <!-- Modal Structure for Pump Inspection Count -->
+    <div id="inspection-modal" class="hidden fixed inset-0 z-50 bg-gray-900 bg-opacity-75 flex items-center justify-center transition-opacity duration-300">
+        <!-- Modal Content -->
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 m-4 transform transition-all sm:my-8 sm:align-middle">
+            <div class="flex justify-between items-start mb-4 border-b pb-3">
+                <h3 class="text-xl font-bold text-gray-800 flex items-center">
+                    <i data-lucide="ClipboardList" class="w-6 h-6 mr-2 text-indigo-600"></i>
+                    ข้อมูลการเข้าตรวจสถานี
+                </h3>
+                <button id="modal-close-button" class="text-gray-400 hover:text-gray-600 transition" onclick="closeInspectionModal()">
+                    <i data-lucide="X" class="w-6 h-6"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-4">
+                <p class="text-gray-600">
+                    <span class="font-semibold text-gray-800">สถานี:</span> 
+                    <span id="modal-station-name" class="text-indigo-700 font-bold"></span>
+                </p>
+                <div class="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                    <p class="text-sm text-gray-500 mb-1">จำนวนครั้งที่เข้าตรวจ (สะสม)</p>
+                    <p id="modal-inspection-count" class="text-4xl font-extrabold text-blue-600">
+                        0
+                    </p>
+                    <p class="text-xs text-gray-500 mt-2">* ข้อมูลจากคอลัมน์ "จำนวนครั้งการเข้าตรวจ"</p>
+                </div>
+            </div>
+            
+            <div class="mt-6 flex justify-end">
+                <button type="button" class="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition" onclick="closeInspectionModal()">
+                    ปิด
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- End Modal Structure -->
 
 </body>
 </html>
