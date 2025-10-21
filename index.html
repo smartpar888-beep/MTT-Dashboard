@@ -54,7 +54,7 @@
         // *************************************************************************************************************************************************
         // ** สำคัญ: กรุณาแทนที่ URL ตัวอย่างเหล่านี้ด้วย URL จริงของ Google Sheets ที่คุณเผยแพร่เป็น CSV และ Dustboy API URL **
         // *************************************************************************************************************************************************
-         const GOOGLE_SHEET_URL_1 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT452CdpcF_hoA-_x3a6Ji0YKeWTuSr_9CM0We83aAAPiBWMRoHrKEujaYtEzHMZYMLEL8wKa10NPYF/pub?gid=675852265&single=true&output=csv"; // ตรวจวัดระดับ
+        const GOOGLE_SHEET_URL_1 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT452CdpcF_hoA-_x3a6Ji0YKeWTuSr_9CM0We83aAAPiBWMRoHrKEujaYtEzHMZYMLEL8wKa10NPYF/pub?gid=675852265&single=true&output=csv"; // ตรวจวัดระดับ
         const GOOGLE_SHEET_URL_2 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT5OYSm3Hn1V4kegJf9x3iK2OGvUIL7vbnWryNUsx15VCm4NdxoVoWZMx1vWTlKcZskeD-YYjhbKn2V/pub?gid=202563025&single=true&output=csv"; // ข้อมูลระดับน้ำเจ้าพระยา
         const GOOGLE_SHEET_URL_3 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTyPcfGQReUPOHckF-6bA4UOucC8cbqRvHj-aTP7uWRkBjvQ4HrieGIhcet4OH9O0DjT_M2FM3QaaV9/pub?gid=273571070&single=true&output=csv"; // ข้อมูลการตรวจสอบการทำงานของเครื่องสูบน้ำ
         const DUSTBOY_API_URL = "https://api.example.com/dustboy/latest_data"; // URL สำหรับ Dustboy API (โปรดแทนที่ด้วย URL จริง)
@@ -64,7 +64,7 @@
         //const UPDATE_INTERVAL_MS = 10000; // สำหรับการทดสอบ: 10 วินาที
 
         // =================================================================================================================================================
-        // ส่วนที่ 2: ฟังก์ชันช่วยเหลือและการจำลองข้อมูล (Mock Data)
+        // ส่วนที่ 2: ฟังก์ชันช่วยเหลือและการกำหนดคีย์มาตรฐาน
         // =================================================================================================================================================
         
         /**
@@ -75,44 +75,62 @@
          */
         function sanitizeText(text) {
             if (!text) return '';
-            // ลบช่องว่าง (Space) และ Newline/Tab ออกทั้งหมด
-            return text.trim().replace(/\s+/g, '');
+            // ลบช่องว่าง (Space), Newline/Tab, และอักขระ BOM ออกทั้งหมด
+            return text.trim().replace(/\s+/g, '').replace(/\uFEFF/g, '');
         }
 
         /**
-         * ฟังก์ชันแปลง CSV string เป็น Array of Objects (ปรับปรุงให้ทนทานต่อการ Trim และ BOM มากขึ้น)
+         * แผนที่คีย์มาตรฐานที่ใช้ในการดึงข้อมูลจาก Array Object 
+         * ทุกคีย์ต้องถูก sanitize เพื่อให้ทนทานต่อช่องว่างแฝง
+         */
+        const KEY_MAP = {
+            // Keys for Water Level (Sheet 1 & 2)
+            WATER_POINT: sanitizeText('จุดวัดระดับน้ำ'),
+            CURRENT_LEVEL: sanitizeText('ระดับน้ำปัจจุบัน'),
+            DIFF_LEVEL: sanitizeText('ส่วนต่างระดับน้ำ'),
+            ALERT_LEVEL: sanitizeText('ระดับการแจ้งเตือน'),
+
+            // Keys for Pump Status (Sheet 3)
+            PUMP_STATION: sanitizeText('สถานีสูบน้ำ'),
+            PUMP_STATUS: sanitizeText('สถานะปั๊ม'),
+            LAST_UPDATE: sanitizeText('เวลาล่าสุด'),
+            INSPECTIONS: sanitizeText('จำนวนครั้งการเข้าตรวจ'),
+        };
+
+        /**
+         * ฟังก์ชันแปลง CSV string เป็น Array of Objects
+         * **ปรับปรุง:** ใช้ sanitizeText กับ Header เพื่อให้ Key ของ Object สะอาดและแม่นยำ
          * @param {string} csvText - ข้อความ CSV ที่ดึงมาจาก Google Sheet
          * @returns {Array<Object>} ข้อมูลที่แปลงแล้ว
          */
         function csvToArray(csvText) {
-            // แยกบรรทัดโดยรองรับทั้ง \r\n และ \n และกรองบรรทัดว่างออก
             const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== '');
             if (lines.length === 0) return [];
 
-            // 1. ประมวลผล Header: Trim, ลบ Quote, และลบ Byte Order Mark (BOM: \uFEFF)
-            const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, '').replace(/\uFEFF/g, ''));
+            // 1. ประมวลผล Header: ทำความสะอาดอย่างเข้มข้นเพื่อใช้เป็น Key
+            const rawHeaders = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+            const cleanHeaders = rawHeaders.map(h => sanitizeText(h)); // ใช้ sanitizeText กับ Header
+            
             const result = [];
 
             for (let i = 1; i < lines.length; i++) {
                 const obj = {};
                 const currentLine = lines[i];
                 
-                // 2. ประมวลผล Value: ใช้ split() ธรรมดาและ Trim/ลบ Quote อย่างเข้มข้น
+                // 2. ประมวลผล Value
                 const values = currentLine.split(',').map(v => v.trim().replace(/"/g, ''));
                 
-                // ตรวจสอบความสมบูรณ์ของคอลัมน์
-                if (values.length === headers.length) {
-                    for (let j = 0; j < headers.length; j++) {
+                if (values.length === cleanHeaders.length) {
+                    for (let j = 0; j < cleanHeaders.length; j++) {
                         // ใช้ Header ที่ถูกทำความสะอาดแล้วเป็น Key
-                        obj[headers[j]] = values[j]; 
+                        obj[cleanHeaders[j]] = values[j]; 
                     }
                     result.push(obj);
                 } else {
-                    // หากจำนวนคอลัมน์ไม่ตรงกัน จะข้ามแถวนี้และแสดงคำเตือนใน Console (F12)
-                    console.warn(`[Parsing Error] Skipping data line ${i+1}: Column count mismatch. Expected ${headers.length}, Got ${values.length}. Line: "${currentLine}"`);
+                    console.warn(`[Parsing Error] Skipping data line ${i+1}: Column count mismatch. Expected ${cleanHeaders.length}, Got ${values.length}. Line: "${currentLine}"`);
                 }
             }
-            console.log("Parsed Headers (ตรวจสอบว่าตรงกับ Sheet หรือไม่):", headers);
+            console.log("Parsed Clean Headers (Key Names):", cleanHeaders);
             console.log(`Successfully parsed ${result.length} data rows.`);
             return result;
         }
@@ -132,9 +150,9 @@
                 return csvToArray(csvText);
             } catch (error) {
                 console.error("Error fetching or parsing sheet data:", error);
-                // ข้อมูลจำลองเมื่อดึงข้อมูลไม่ได้
+                // ข้อมูลจำลองเมื่อดึงข้อมูลไม่ได้ - ใช้คีย์ที่ถูก sanitize แล้ว
                 return [
-                    { 'จุดวัดระดับน้ำ': 'N/A (Error)', 'ระดับน้ำปัจจุบัน': 'Error', 'ระดับน้ำก่อนหน้า': 'Error', 'ส่วนต่างระดับน้ำ': 'Error', 'ระดับการแจ้งเตือน': 'ไม่ได้เชื่อมต่อ' },
+                    { [KEY_MAP.WATER_POINT]: 'N/A (Error)', [KEY_MAP.ALERT_LEVEL]: 'ไม่ได้เชื่อมต่อ' },
                 ];
             }
         }
@@ -189,7 +207,7 @@
         }
 
         // =================================================================================================================================================
-        // ส่วนที่ 4: ฟังก์ชันการแสดงผล (Rendering - ปรับปรุงการใช้สีตามสถานะ)
+        // ส่วนที่ 4: ฟังก์ชันการแสดงผล (Rendering - ใช้ KEY_MAP ที่กำหนดไว้)
         // =================================================================================================================================================
         
         /**
@@ -248,19 +266,19 @@
          * สร้างแถวตารางสำหรับข้อมูลระดับน้ำ (Sheet 1 & 2)
          */
         function createWaterTableRow(data) {
-            // ใช้ 'ระดับการแจ้งเตือน' เป็น key สำหรับดึงสถานะ
-            const alertLevel = data['ระดับการแจ้งเตือน'] || 'N/A';
+            // ใช้ KEY_MAP ที่กำหนดไว้แล้ว
+            const alertLevel = data[KEY_MAP.ALERT_LEVEL] || 'N/A';
             const alertStyles = getAlertStyles(alertLevel);
-            const diffValue = data['ส่วนต่างระดับน้ำ'] || '0.00';
+            const diffValue = data[KEY_MAP.DIFF_LEVEL] || '0.00';
             const diffIcon = getDiffIcon(diffValue);
 
             return `
                 <tr class="border-b hover:bg-gray-50 transition duration-150">
                     <td class="p-4 whitespace-nowrap font-medium text-gray-900">
-                        ${data['จุดวัดระดับน้ำ'] || 'N/A'} 
+                        ${data[KEY_MAP.WATER_POINT] || 'N/A'} 
                     </td>
                     <td class="p-4 whitespace-nowrap text-lg font-bold text-gray-900">
-                        ${data['ระดับน้ำปัจจุบัน'] || 'N/A'} ม.
+                        ${data[KEY_MAP.CURRENT_LEVEL] || 'N/A'} ม.
                     </td>
                     <td class="p-4 whitespace-nowrap text-gray-600">
                         <div class="flex items-center space-x-2">
@@ -284,16 +302,16 @@
          * สร้างแถวตารางสำหรับข้อมูลสถานะปั๊ม (Sheet 3)
          */
         function createPumpTableRow(data) {
-            // ใช้ 'สถานะปั๊ม' เป็น key สำหรับดึงสถานะ
-            const pumpStatus = data['สถานะปั๊ม'] || 'ไม่พบสถานะ';
+            // ใช้ KEY_MAP ที่กำหนดไว้แล้ว
+            const pumpStatus = data[KEY_MAP.PUMP_STATUS] || 'ไม่พบสถานะ';
             const alertStyles = getAlertStyles(pumpStatus);
-            const lastUpdate = data['เวลาล่าสุด'] || 'N/A';
-            const dailyInspections = data['จำนวนครั้งการเข้าตรวจ'] || '0'; 
+            const lastUpdate = data[KEY_MAP.LAST_UPDATE] || 'N/A';
+            const dailyInspections = data[KEY_MAP.INSPECTIONS] || '0'; 
 
             return `
                 <tr class="border-b hover:bg-gray-50 transition duration-150">
                     <td class="p-4 whitespace-nowrap font-medium text-gray-900">
-                        ${data['สถานีสูบน้ำ'] || 'N/A'}
+                        ${data[KEY_MAP.PUMP_STATION] || 'N/A'}
                     </td>
                     <td class="p-4 whitespace-nowrap">
                         <span class="status-badge ${alertStyles.color} ring-1 ring-inset">
@@ -324,7 +342,10 @@
             const isPumpTable = elementId === 'pump-status-table-body';
             const colSpan = isPumpTable ? 4 : 4; 
             
-            if (data.length === 0 || data[0]?.['ระดับน้ำปัจจุบัน']?.includes('Error') || data[0]?.['สถานีสูบน้ำ']?.includes('Error')) {
+            // ตรวจสอบข้อมูล Error โดยอิงจากคีย์ที่ถูก sanitize แล้ว
+            const checkKey = isPumpTable ? KEY_MAP.PUMP_STATION : KEY_MAP.CURRENT_LEVEL;
+
+            if (data.length === 0 || (data.length > 0 && data[0]?.[checkKey]?.includes('Error'))) {
                 tableBody.innerHTML = `
                     <tr>
                         <td colspan="${colSpan}" class="p-8 text-center text-red-500 bg-red-50/50">
@@ -335,6 +356,11 @@
                 `;
             } else {
                 data.forEach(item => {
+                    // ตรวจสอบว่าคีย์หลักของตารางปั๊มมีค่าหรือไม่
+                    if (isPumpTable && !item[KEY_MAP.PUMP_STATION]) {
+                         console.warn("Skipping row: Pump station name is missing or key mismatch.");
+                         return; // ข้ามแถวที่คีย์หลักไม่ถูกต้อง
+                    }
                     tableBody.innerHTML += rowCreator(item);
                 });
             }
