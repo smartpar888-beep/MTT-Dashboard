@@ -225,8 +225,6 @@
         // ส่วนที่ 4: ฟังก์ชันการแสดงผล (Rendering)
         // =================================================================================================================================================
         
-        // ... (getAlertStyles, getDiffIcon, createWaterTableRow, createPumpStatusCard, showInspectionModal, closeInspectionModal) ...
-        
         /**
          * แปลงระดับการแจ้งเตือนเป็นสีและไอคอน
          */
@@ -396,14 +394,65 @@
                 modal.classList.remove('flex');
             }
         }
+        
+        /**
+         * แสดงข้อความ Error และคำแนะนำในการแก้ไขปัญหาสำหรับ Sheet 4
+         */
+        function displaySheet4Error(containerId, data) {
+            const container = document.querySelector(containerId);
+            const isUrlPlaceholder = GOOGLE_SHEET_URL_4.includes('{SHEET_ID_4}');
+            
+            let message = '';
+            let details = '';
+            let title = '';
+
+            if (isUrlPlaceholder) {
+                 title = "❗ ไม่ได้ระบุ URL ของ Sheet 4";
+                 message = "กรุณาแทนที่ GOOGLE_SHEET_URL_4 ด้วย Link CSV ที่เผยแพร่แล้วของท่าน";
+                 details = `URL ปัจจุบัน: ${GOOGLE_SHEET_URL_4}`;
+            } else if (data.length === 0 || (data.length > 0 && (data[0]?.['ERROR_KEY'] || '').includes('Error'))) {
+                 title = "❌ ไม่สามารถโหลดข้อมูล Sheet 4 ได้";
+                 message = "กรุณาตรวจสอบว่า Google Sheet ได้ถูก 'เผยแพร่ไปยังเว็บ' (Publish to web) เป็น CSV และ URL ถูกต้อง";
+                 details = `
+                    <p class="mt-2 text-sm text-red-700 font-medium">ข้อกำหนดชื่อคอลัมน์:</p>
+                    <ul class="list-disc list-inside ml-4 text-xs">
+                        <li>จุดวัด: <strong>${USER_COLUMN_NAMES.SHEET_4.POINT}</strong> (ใช้สำหรับแกน X)</li>
+                        <li>ปริมาณ: <strong>${USER_COLUMN_NAMES.SHEET_4.AMOUNT}</strong> (ใช้สำหรับแกน Y)</li>
+                        <li>ระยะเวลา: <strong>${USER_COLUMN_NAMES.SHEET_4.DURATION}</strong> (ใช้สำหรับ Card)</li>
+                    </ul>
+                 `;
+            } else {
+                 // No error, but no valid chart data after parsing
+                 title = "⚠️ ข้อมูลไม่พร้อมใช้งานสำหรับกราฟ";
+                 message = "ข้อมูลที่ได้รับไม่พบค่า 'ปริมาณน้ำฝน' ที่เป็นตัวเลข หรือ 'จุดวัดประมาณน้ำฝน' ที่ถูกต้อง";
+                 details = "โปรดตรวจสอบข้อมูลดิบใน Sheet ว่ามีตัวเลขและชื่อจุดวัดที่ครบถ้วนหรือไม่";
+            }
+            
+            // Generate the error card HTML
+            container.innerHTML = `
+                <div class="p-8 text-center bg-red-50/50 rounded-lg border border-red-300">
+                    <h3 class="text-xl font-bold text-red-800 mb-2">${title}</h3>
+                    <p class="text-red-700">${message}</p>
+                    <div class="mt-4 p-3 bg-red-100 rounded-md text-left">
+                        <p class="font-semibold text-red-800">รายละเอียด:</p>
+                        <pre class="text-xs whitespace-pre-wrap">${details}</pre>
+                    </div>
+                </div>
+            `;
+        }
 
         /**
          * สร้าง Card สำหรับระยะเวลาฝนตก (Sheet 4) <-- NEW
          */
         function createRainDurationCard(data) {
-            // หาค่า ระยะเวลาฝนตก จากแถวแรกที่มีข้อมูล
+            const container = document.getElementById('rain-duration-card-container');
+            if (!container) return;
+
+            const isFetchError = data.length === 0 || (data.length > 0 && (data[0]?.['ERROR_KEY'] || '').includes('Error'));
+            
             let duration = 'N/A';
-            if (data.length > 0) {
+            if (!isFetchError && data.length > 0) {
+                // พยายามดึงข้อมูลจากแถวแรก
                 duration = data[0][KEY_MAP.RAIN_DURATION] || 'N/A';
             }
 
@@ -432,11 +481,8 @@
                 </div>
             `;
 
-            const container = document.getElementById('rain-duration-card-container');
-            if (container) {
-                container.innerHTML = cardHtml;
-                lucide.createIcons();
-            }
+            container.innerHTML = cardHtml;
+            lucide.createIcons();
         }
         
         /**
@@ -446,7 +492,20 @@
             const containerId = '#rainfall-chart-container';
             const container = document.querySelector(containerId);
             
-            // 1. เตรียมข้อมูล
+            // ล้าง SVG เก่า
+            d3.select(containerId).select("svg").remove();
+
+            // 1. ตรวจสอบ Error / Placeholder
+            const isUrlPlaceholder = GOOGLE_SHEET_URL_4.includes('{SHEET_ID_4}');
+            const isFetchError = data.length === 0 || (data.length > 0 && (data[0]?.['ERROR_KEY'] || '').includes('Error'));
+
+            if (isUrlPlaceholder || isFetchError) {
+                // Display prominent error message using the helper function
+                displaySheet4Error(containerId, data);
+                return;
+            }
+
+            // 2. เตรียมข้อมูล
             const chartData = data
                 .map(d => ({
                     point: d[KEY_MAP.RAIN_POINT] || 'N/A',
@@ -454,15 +513,13 @@
                 }))
                 .filter(d => !isNaN(d.amount) && d.point !== 'N/A' && d.amount >= 0);
 
-            // ล้าง SVG เก่า
-            d3.select(containerId).select("svg").remove();
-
             if (chartData.length === 0) {
-                container.innerHTML = `<div class="p-8 text-center text-gray-500">ไม่พบข้อมูลปริมาณน้ำฝนที่ถูกต้องสำหรับการแสดงผลกราฟ</div>`;
-                return;
+                 // Display specific error if data was fetched but is invalid for charting
+                 displaySheet4Error(containerId, data);
+                 return;
             }
             
-            // 2. กำหนดขนาดและขอบเขต
+            // 3. กำหนดขนาดและขอบเขต
             const margin = { top: 20, right: 30, bottom: 80, left: 60 };
             const initialWidth = container.clientWidth;
             const initialHeight = container.clientHeight;
@@ -471,7 +528,7 @@
             const width = Math.max(initialWidth - margin.left - margin.right, 300);
             const height = Math.max(initialHeight - margin.top - margin.bottom, 300);
 
-            // 3. สร้าง SVG Element
+            // 4. สร้าง SVG Element
             const svg = d3.select(containerId)
                 .append("svg")
                 .attr("width", width + margin.left + margin.right)
@@ -480,7 +537,7 @@
                 .append("g")
                 .attr("transform", `translate(${margin.left},${margin.top})`);
                 
-            // 4. กำหนด Scale
+            // 5. กำหนด Scale
             // Scale X (ชื่อจุดวัด - Categorical)
             const x = d3.scaleBand()
                 .domain(chartData.map(d => d.point))
@@ -492,7 +549,7 @@
                 .domain([0, d3.max(chartData, d => d.amount) * 1.1]) 
                 .range([height, 0]);
 
-            // 5. วาด Axis
+            // 6. วาด Axis
             // X-Axis
             svg.append("g")
                 .attr("transform", `translate(0,${height})`)
@@ -518,7 +575,7 @@
                 .style("fill", "#4b5563")
                 .text("ปริมาณน้ำฝน (มม.)"); 
 
-            // 6. วาด Bar
+            // 7. วาด Bar
             svg.selectAll(".bar")
                 .data(chartData)
                 .enter().append("rect")
@@ -535,7 +592,7 @@
                 .attr("y", d => y(d.amount))
                 .attr("height", d => height - y(d.amount));
                 
-            // 7. เพิ่ม Text Label บน Bar
+            // 8. เพิ่ม Text Label บน Bar
             svg.selectAll(".label")
                 .data(chartData)
                 .enter().append("text")
@@ -578,6 +635,7 @@
             const isError = data.length === 0 || (data.length > 0 && (data[0]?.['ERROR_KEY'] || '').includes('Error'));
 
             if (isError) {
+                // ข้อความแจ้งเตือนสำหรับตาราง/การ์ดอื่น (ไม่ใช่ Sheet 4)
                 const errorMessage = 'ไม่สามารถดึงข้อมูลจาก Google Sheet ได้ กรุณาตรวจสอบ URL, สถานะการเผยแพร่ และชื่อคอลัมน์ในส่วน USER_COLUMN_NAMES';
                 
                 // สำหรับตาราง (Water Level - tbody)
@@ -657,7 +715,7 @@
                 updateTable('chaophraya-table-body', chaoPhrayaData, createWaterTableRow);
                 updateTable('pump-status-card-container', pumpStatusData, createPumpStatusCard); 
                 
-                // อัปเดตส่วนปริมาณน้ำฝน
+                // อัปเดตส่วนปริมาณน้ำฝน (มีการจัดการ Error ภายในฟังก์ชันแล้ว)
                 createRainDurationCard(rainfallData);
                 drawRainfallBarChart(rainfallData);
                 
@@ -823,7 +881,7 @@
                     </div>
                     <!-- Bar Chart Container: pt-16 เพื่อเว้นพื้นที่ให้ Card ด้านบน -->
                     <div id="rainfall-chart-container" class="w-full h-full pt-16"> 
-                        <!-- Chart will be drawn here -->
+                        <!-- Chart will be drawn here, or error message will be displayed -->
                     </div>
                 </div>
             </div>
@@ -835,7 +893,7 @@
     <footer class="mt-4 flex-shrink-0 text-center text-sm text-gray-400">
         <p>Dashboard Powered by Gemini and deployed on GitHub Pages.</p>
         <p class="mt-1 font-semibold text-gray-600">
-            **โปรดทราบ:** หากข้อมูลยังไม่แสดง ให้ตรวจสอบ Console และแก้ไขชื่อคอลัมน์ในส่วน USER_COLUMN_NAMES (บรรทัด ~40)
+            **สำคัญ:** หากข้อมูล Sheet 4 (ปริมาณน้ำฝน) ไม่แสดง โปรดตรวจสอบ 1. GOOGLE_SHEET_URL_4 และ 2. ชื่อคอลัมน์ใน USER_COLUMN_NAMES (บรรทัด ~40)
         </p>
     </footer>
 
