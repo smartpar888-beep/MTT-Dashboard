@@ -23,9 +23,9 @@
             align-items: center;
         }
         
-        /* *** CSS เพื่อให้พอดีหน้าจอ 100% (Full Screen) และไม่ให้เกิด Scrollbar หลัก *** */
+        /* CSS เพื่อให้พอดีหน้าจอ 100% (Full Screen) */
         html, body {
-            height: 100%; /* ใช้ความสูงเต็ม viewport */
+            height: 100%; 
             margin: 0;
             padding: 0;
         }
@@ -33,8 +33,8 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
-            padding: 1.5rem; /* ลด p-8 เป็น p-6 (1.5rem) เพื่อให้มีพื้นที่เหลือมากขึ้น */
-            overflow: hidden; /* ป้องกัน scrollbar หลัก */
+            padding: 1.5rem; 
+            overflow: hidden; 
         }
         
         /* ให้ Main Content ใช้พื้นที่ที่เหลือทั้งหมด */
@@ -52,16 +52,18 @@
         // =================================================================================================================================================
         
         // *************************************************************************************************************************************************
-        // ** สำคัญ: กรุณาแทนที่ URL ตัวอย่างเหล่านี้ด้วย URL จริงของ Google Sheets ที่คุณเผยแพร่เป็น CSV และ Dustboy API URL **
+        // ** สำคัญ: กรุณาแทนที่ URL ตัวอย่างเหล่านี้ด้วย URL จริงของ Google Sheets ที่คุณเผยแพร่เป็น CSV **
+        // ** หากการแสดงผลตารางยังเป็น "ไม่สามารถดึงข้อมูลได้" โปรดตรวจสอบว่าคุณได้ 'เผยแพร่สู่เว็บ' แล้ว **
         // *************************************************************************************************************************************************
         const GOOGLE_SHEET_URL_1 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT452CdpcF_hoA-_x3a6Ji0YKeWTuSr_9CM0We83aAAPiBWMRoHrKEujaYtEzHMZYMLEL8wKa10NPYF/pub?gid=675852265&single=true&output=csv"; // ตรวจวัดระดับ
         const GOOGLE_SHEET_URL_2 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT5OYSm3Hn1V4kegJf9x3iK2OGvUIL7vbnWryNUsx15VCm4NdxoVoWZMx1vWTlKcZskeD-YYjhbKn2V/pub?gid=202563025&single=true&output=csv"; // ข้อมูลระดับน้ำเจ้าพระยา
-        const GOOGLE_SHEET_URL_3 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTyPcfGQReUPOHckF-6bA4UOucC8cbqRvHj-aTP7uWRkBjvQ4HrieGIhcet4OH9O0DjT_M2FM3QaaV9/pub?gid=273571070&single=true&output=csv"; // ข้อมูลการตรวจสอบการทำงานของเครื่องสูบน้ำ
-        const DUSTBOY_API_URL = "https://api.example.com/dustboy/latest_data"; // URL สำหรับ Dustboy API (โปรดแทนที่ด้วย URL จริง)
-
+        const GOOGLE_SHEET_URL_3 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTyPcfGQReUPOHckF-6bA4UOucC8cbqRvHj-aTP7uWRkBjvQ4HrieGIhcet4OH9O0DjT_M2FM3QaaV9/pub?gid=273571070&single=true&output=csv"; // ข้อมูลการตรวจสอบการทำงานของเครื่องสูบน้ำ้ำ
+        
+        // ** Dustboy URL ที่คุณระบุ: ต้องเปลี่ยน 'https://example.com' เป็นชื่อโดเมนจริง **
+        const DUSTBOY_API_URL = "https://example.com/api/dustboy/station?apikey=7rLtfWDxADFmNXcQ8gjViOHo0ToFDotJDJok74vL"; 
+        
         // ระยะเวลาการอัปเดต: 1 ชั่วโมง = 3600000 มิลลิวินาที
         const UPDATE_INTERVAL_MS = 3600000;
-        //const UPDATE_INTERVAL_MS = 10000; // สำหรับการทดสอบ: 10 วินาที
 
         // =================================================================================================================================================
         // ส่วนที่ 2: ฟังก์ชันช่วยเหลือและการกำหนดคีย์มาตรฐาน
@@ -69,7 +71,6 @@
         
         /**
          * ทำความสะอาดข้อความ โดยการลบช่องว่างทั้งหมด (รวมถึงช่องว่างที่ซ่อนอยู่)
-         * เพื่อให้มั่นใจว่าการเปรียบเทียบคำภาษาไทยถูกต้อง
          * @param {string} text - ข้อความที่ต้องการทำความสะอาด
          * @returns {string} ข้อความที่ถูกทำความสะอาดแล้ว
          */
@@ -81,11 +82,9 @@
 
         /**
          * แผนที่คีย์มาตรฐานที่ใช้ในการดึงข้อมูลจาก Array Object 
-         * ทุกคีย์ต้องถูก sanitize เพื่อให้ทนทานต่อช่องว่างแฝง
          */
         const KEY_MAP = {
             // Keys for Water Level (Sheet 1 & 2)
-            // ใช้ 'จุดวัด' ซึ่งเป็นคีย์ที่สั้นลงและมักใช้ใน Sheet 2
             WATER_POINT: sanitizeText('จุดวัด'), 
             CURRENT_LEVEL: sanitizeText('ระดับน้ำปัจจุบัน'),
             DIFF_LEVEL: sanitizeText('ส่วนต่างระดับน้ำ'),
@@ -100,17 +99,13 @@
 
         /**
          * ฟังก์ชันแปลง CSV string เป็น Array of Objects
-         * **ปรับปรุง:** ใช้ sanitizeText กับ Header เพื่อให้ Key ของ Object สะอาดและแม่นยำ
-         * @param {string} csvText - ข้อความ CSV ที่ดึงมาจาก Google Sheet
-         * @returns {Array<Object>} ข้อมูลที่แปลงแล้ว
          */
         function csvToArray(csvText) {
             const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== '');
             if (lines.length === 0) return [];
 
-            // 1. ประมวลผล Header: ทำความสะอาดอย่างเข้มข้นเพื่อใช้เป็น Key
             const rawHeaders = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-            const cleanHeaders = rawHeaders.map(h => sanitizeText(h)); // ใช้ sanitizeText กับ Header
+            const cleanHeaders = rawHeaders.map(h => sanitizeText(h)); 
             
             const result = [];
 
@@ -118,43 +113,43 @@
                 const obj = {};
                 const currentLine = lines[i];
                 
-                // 2. ประมวลผล Value
                 const values = currentLine.split(',').map(v => v.trim().replace(/"/g, ''));
                 
                 if (values.length === cleanHeaders.length) {
                     for (let j = 0; j < cleanHeaders.length; j++) {
-                        // ใช้ Header ที่ถูกทำความสะอาดแล้วเป็น Key
                         obj[cleanHeaders[j]] = values[j]; 
                     }
                     result.push(obj);
                 } else {
-                    console.warn(`[Parsing Error] Skipping data line ${i+1}: Column count mismatch. Expected ${cleanHeaders.length}, Got ${values.length}. Line: "${currentLine}"`);
+                    console.warn(`[Parsing Error] Skipping data line ${i+1}: Column count mismatch.`);
                 }
             }
-            // แสดงผล Header ที่ถูกทำความสะอาดแล้วเพื่อช่วยในการดีบัก
-            console.log("Parsed Clean Headers (Key Names):", cleanHeaders); 
-            console.log(`Successfully parsed ${result.length} data rows.`);
             return result;
         }
 
         /**
          * ฟังก์ชันหลักในการดึงข้อมูลจาก Google Sheet (CSV)
-         * @param {string} url - URL ของ Google Sheet ที่เผยแพร่เป็น CSV
-         * @returns {Promise<Array<Object>>} ข้อมูลในรูปแบบ Array of Objects
          */
         async function fetchDataFromSheet(url) {
             try {
                 const response = await fetch(url);
                 if (!response.ok) {
+                    // ตรวจจับ URL Placeholder ที่ไม่ถูกต้อง
+                    if (url.includes('{SHEET_ID_')) {
+                         console.error("Error: Placeholder URL detected. Please replace {SHEET_ID} and {GID} with your actual published Google Sheet URL.");
+                         // ส่งข้อมูล Error ที่จะถูกจับใน updateTable
+                         return [
+                            { [KEY_MAP.WATER_POINT]: 'N/A (Error: Placeholder URL)', [KEY_MAP.ALERT_LEVEL]: 'ไม่ได้เชื่อมต่อ' },
+                         ];
+                    }
                     throw new Error(`HTTP error! status: ${response.status} from ${url}`);
                 }
                 const csvText = await response.text();
                 return csvToArray(csvText);
             } catch (error) {
                 console.error("Error fetching or parsing sheet data:", error);
-                // ข้อมูลจำลองเมื่อดึงข้อมูลไม่ได้ - ใช้คีย์ที่ถูก sanitize แล้ว
+                // ส่งข้อมูล Error ที่จะถูกจับใน updateTable
                 return [
-                    // ใช้ KEY_MAP.WATER_POINT เป็นคีย์หลักในการตรวจสอบข้อผิดพลาดของตารางน้ำ
                     { [KEY_MAP.WATER_POINT]: 'N/A (Error)', [KEY_MAP.ALERT_LEVEL]: 'ไม่ได้เชื่อมต่อ' },
                 ];
             }
@@ -165,24 +160,20 @@
         // =================================================================================================================================================
 
         async function fetchWaterLevelData() {
-            console.log("Fetching data from Sheet 1 (Water Level Monitoring)...");
             return fetchDataFromSheet(GOOGLE_SHEET_URL_1);
         }
 
         async function fetchChaoPhrayaData() {
-            console.log("Fetching data from Sheet 2 (Chao Phraya Level)...");
             return fetchDataFromSheet(GOOGLE_SHEET_URL_2);
         }
 
         async function fetchPumpStatusData() {
-            console.log("Fetching data from Sheet 3 (Pump Status)...");
             return fetchDataFromSheet(GOOGLE_SHEET_URL_3);
         }
 
         async function fetchDustboyData() {
             try {
-                console.log("Fetching data from Dustboy API...");
-                const response = await fetch(DUSTBOY_API_URL); // สมมติว่า Dustboy API เป็น JSON
+                const response = await fetch(DUSTBOY_API_URL); 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -190,75 +181,70 @@
                 
                 const latestData = Array.isArray(data) ? data[0] : data; 
 
+                const pm25Value = latestData.pm25 || latestData.PM25_Val || latestData.value || "N/A";
+                const location = latestData.location || latestData.name || "ไม่ระบุตำแหน่ง";
+                const status = latestData.status || latestData.AQI_Status || "ปกติ"; 
+                const timestamp = latestData.timestamp ? new Date(latestData.timestamp).toLocaleTimeString('th-TH') : new Date().toLocaleTimeString('th-TH');
+
+                const finalPm25 = isNaN(parseFloat(pm25Value)) ? "N/A" : parseFloat(pm25Value);
+
                 return {
-                    location: latestData.location || "ไม่ระบุตำแหน่ง",
-                    pm25: latestData.pm25 || "N/A",
-                    status: latestData.status || "ปกติ", 
-                    timestamp: latestData.timestamp ? new Date(latestData.timestamp).toLocaleTimeString('th-TH') : new Date().toLocaleTimeString('th-TH')
+                    location: location,
+                    pm25: finalPm25,
+                    status: status, 
+                    timestamp: timestamp
                 };
 
             } catch (error) {
                 console.error("Error fetching Dustboy data:", error);
-                // ข้อมูลจำลองในกรณีที่ผิดพลาด
                 return {
-                    location: "จำลอง: กรุงเทพมหานคร",
-                    pm25: 35,
-                    status: "ดีมาก (จำลอง)",
+                    location: "จำลอง: ไม่สามารถเชื่อมต่อ API ได้",
+                    pm25: "N/A",
+                    status: "ไม่ได้เชื่อมต่อ (จำลอง)",
                     timestamp: new Date().toLocaleTimeString('th-TH')
                 };
             }
         }
 
         // =================================================================================================================================================
-        // ส่วนที่ 4: ฟังก์ชันการแสดงผล (Rendering - ใช้ KEY_MAP ที่กำหนดไว้)
+        // ส่วนที่ 4: ฟังก์ชันการแสดงผล (Rendering)
         // =================================================================================================================================================
         
         /**
-         * แปลงระดับการแจ้งเตือนเป็นสีและไอคอน (ใช้ sanitizeText เพื่อความแม่นยำภาษาไทย)
+         * แปลงระดับการแจ้งเตือนเป็นสีและไอคอน
          */
         function getAlertStyles(alertLevel) {
-            // ทำความสะอาด string ก่อนการเปรียบเทียบเพื่อให้แม่นยำแม้มีช่องว่างพิเศษ
             const sanitizedLevel = sanitizeText(alertLevel);
             
-            // 1. วิกฤติ / อันตราย / ผิดปกติ / แจ้งเตือน (Red)
             if (sanitizedLevel.includes('วิกฤติ') || sanitizedLevel.includes('ผิดปกติ') || sanitizedLevel.includes('อันตราย') || sanitizedLevel.includes('แจ้งเตือน')) {
                 return { color: 'bg-red-100 text-red-800 ring-red-300', icon: 'AlertTriangle', iconColor: 'text-red-500' };
             }
             
-            // 2. เฝ้าระวัง / สูง (Amber/Yellow)
             if (sanitizedLevel.includes('เฝ้าระวัง') || sanitizedLevel.includes('สูง')) {
-                // ใช้สี Amber สำหรับเฝ้าระวัง
                 return { color: 'bg-amber-100 text-amber-800 ring-amber-300', icon: 'Eye', iconColor: 'text-amber-500' };
             }
             
-            // 3. ปกติ / ทำงาน (Green)
             if (sanitizedLevel.includes('ปกติ') || sanitizedLevel.includes('ทำงาน')) {
-                // ใช้สี Green สำหรับสถานะปกติและปั๊มที่กำลังทำงาน
                 return { color: 'bg-green-100 text-green-800 ring-green-300', icon: 'CheckCircle', iconColor: 'text-green-500' };
             }
             
-            // 4. ไม่ทำงาน (Indigo - Neutral operational state)
             if (sanitizedLevel.includes('ไม่ทำงาน')) {
-                // ใช้สี Indigo สำหรับสถานะที่ไม่ทำงาน (Off/Standby)
                 return { color: 'bg-indigo-100 text-indigo-800 ring-indigo-300', icon: 'PauseCircle', iconColor: 'text-indigo-500' };
             }
 
-            // Default
             return { color: 'bg-gray-100 text-gray-800 ring-gray-300', icon: 'Info', iconColor: 'text-gray-500' };
         }
 
         /**
-         * แปลงส่วนต่างระดับน้ำเป็นสีและไอคอนตามคำขอ (เพิ่ม = แดง, ลดลง = เขียว)
+         * แปลงส่วนต่างระดับน้ำเป็นสีและไอคอน
          */
         function getDiffIcon(diff) {
             const numDiff = parseFloat(diff);
             if (isNaN(numDiff)) return { icon: 'Minus', iconColor: 'text-gray-500' };
 
             if (numDiff > 0.001) {
-                // เพิ่มขึ้น: สีแดง (สัญญาณเตือนความสูงของระดับน้ำ)
                 return { icon: 'ArrowUp', iconColor: 'text-red-500' }; 
             } else if (numDiff < -0.001) {
-                // ลดลง: สีเขียว (สัญญาณที่ดี/ปลอดภัยขึ้น)
                 return { icon: 'ArrowDown', iconColor: 'text-green-500' }; 
             } else {
                 return { icon: 'Minus', iconColor: 'text-gray-500' };
@@ -269,29 +255,22 @@
          * สร้างแถวตารางสำหรับข้อมูลระดับน้ำ (Sheet 1 & 2)
          */
         function createWaterTableRow(data) {
-            // ใช้ KEY_MAP ที่กำหนดไว้แล้ว
             const alertLevel = data[KEY_MAP.ALERT_LEVEL] || 'N/A';
             const alertStyles = getAlertStyles(alertLevel);
             const diffValue = data[KEY_MAP.DIFF_LEVEL] || '0.00';
             const diffIcon = getDiffIcon(diffValue);
 
-            // ******* LOGIC สำหรับการกำหนดหน่วย: รทก./MSL. สำหรับระดับ, ลบ.ม./วินาที สำหรับปริมาณ *******
             const currentLevelValue = data[KEY_MAP.CURRENT_LEVEL];
             const numLevel = parseFloat(currentLevelValue);
-            
-            // หน่วยเริ่มต้นคือ รทก./MSL. (ระดับน้ำทะเลปานกลาง)
             let unit = 'รทก./MSL.'; 
 
-            // ตรวจสอบค่า ถ้า >= 100 แสดงว่าเป็นปริมาณน้ำไหล (ลบ.ม./วินาที)
             if (!isNaN(numLevel) && numLevel >= 100) {
                 unit = 'ลบ.ม./วินาที';
             } else if (isNaN(numLevel) && currentLevelValue !== 'N/A') {
-                // กรณีที่เป็นข้อความที่ไม่ได้เป็น 'N/A' ให้ละเว้นหน่วยเพื่อความชัดเจน
                 unit = ''; 
             }
             
             const displayLevel = currentLevelValue || 'N/A';
-            // ******* LOGIC สิ้นสุด *******
 
             return `
                 <tr class="border-b hover:bg-gray-50 transition duration-150">
@@ -320,23 +299,20 @@
         }
         
         /**
-         * สร้าง Card สำหรับข้อมูลสถานะปั๊ม (Sheet 3)
-         * แสดงเฉพาะชื่อสถานีและสถานะ (สีเขียว/แดง)
+         * สร้าง Card สำหรับข้อมูลสถานะปั๊ม (Sheet 3) - ปรับปรุงการจัดวางและขนาดฟอนต์
          */
         function createPumpStatusCard(data) {
-            // ใช้ KEY_MAP ที่กำหนดไว้แล้ว
             const pumpStation = data[KEY_MAP.PUMP_STATION] || 'N/A';
             const pumpStatus = data[KEY_MAP.PUMP_STATUS] || 'ไม่พบสถานะ';
-            const inspectionCount = data[KEY_MAP.INSPECTIONS] || '0'; // ดึงจำนวนครั้งการเข้าตรวจ
+            const inspectionCount = data[KEY_MAP.INSPECTIONS] || '0'; 
             
-            // ทำความสะอาด string ก่อนการเปรียบเทียบ
             const sanitizedStatus = sanitizeText(pumpStatus);
 
             let bgColor = 'bg-gray-100';
             let textColor = 'text-gray-800';
             let icon = 'Info';
 
-            // Color Logic based on user request: เขียว = ปกติ, แดง = ผิดปกติ/ไม่ทำงาน
+            // Color Logic
             if (sanitizedStatus.includes('ปกติ') || sanitizedStatus.includes('ทำงาน')) {
                 bgColor = 'bg-green-100';
                 textColor = 'text-green-800';
@@ -346,29 +322,30 @@
                 textColor = 'text-red-800';
                 icon = 'AlertTriangle';
             } else {
-                // สถานะอื่น ๆ เช่น 'เฝ้าระวัง' หรือ 'N/A'
                 bgColor = 'bg-yellow-100';
                 textColor = 'text-yellow-800';
                 icon = 'Eye';
             }
 
-            // ต้อง Escape single quotes สำหรับใช้ใน onclick attribute
             const safeStationName = pumpStation.replace(/'/g, "\\'");
             const safeInspectionCount = inspectionCount.replace(/'/g, "\\'");
             
-            // เพิ่ม onclick เพื่อเรียก Modal
             return `
                 <div 
-                    class="p-3 ${bgColor} rounded-lg shadow-sm ring-1 ring-inset ring-opacity-50 flex items-center space-x-2 transition duration-200 hover:ring-2 hover:ring-offset-2 hover:ring-opacity-100 cursor-pointer"
+                    class="p-3 ${bgColor} rounded-lg shadow-sm ring-1 ring-inset ring-opacity-50 flex items-start space-x-2 transition duration-200 hover:ring-2 hover:ring-offset-2 hover:ring-opacity-100 cursor-pointer w-full sm:w-1/2 md:w-full lg:w-full xl:w-1/2 2xl:w-1/3"
                     onclick="showInspectionModal('${safeStationName}', '${safeInspectionCount}')"
                 >
-                    <i data-lucide="${icon}" class="w-4 h-4 ${textColor}"></i>
-                    <span class="text-sm font-semibold ${textColor} whitespace-nowrap">
-                        ${pumpStation}
-                    </span>
-                    <span class="text-xs ${textColor} opacity-75 hidden sm:inline">
-                        (${pumpStatus})
-                    </span>
+                    <i data-lucide="${icon}" class="w-4 h-4 mt-1 ${textColor} flex-shrink-0"></i> 
+                    <!-- New Vertical Text Container -->
+                    <div class="flex flex-col min-w-0"> 
+                        <span class="text-sm font-semibold ${textColor} truncate">
+                            ${pumpStation}
+                        </span>
+                        <!-- Status text: Smaller font (text-[11px]), reduced top margin (mt-[-2px]) -->
+                        <span class="text-[11px] ${textColor} opacity-85 mt-[-2px] truncate">
+                            ${pumpStatus}
+                        </span>
+                    </div>
                 </div>
             `;
         }
@@ -376,8 +353,6 @@
 
         /**
          * แสดง Modal สำหรับจำนวนครั้งการเข้าตรวจ
-         * @param {string} stationName - ชื่อสถานี
-         * @param {string} inspectionCount - จำนวนครั้งการเข้าตรวจ
          */
         function showInspectionModal(stationName, inspectionCount) {
             const modal = document.getElementById('inspection-modal');
@@ -387,7 +362,6 @@
             if (modal && stationNameElement && inspectionCountElement) {
                 stationNameElement.textContent = stationName;
                 inspectionCountElement.textContent = inspectionCount;
-                // แสดง Modal
                 modal.classList.remove('hidden');
                 modal.classList.add('flex');
             }
@@ -399,7 +373,6 @@
         function closeInspectionModal() {
             const modal = document.getElementById('inspection-modal');
             if (modal) {
-                // ซ่อน Modal
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
             }
@@ -408,7 +381,6 @@
 
         /**
          * อัปเดตส่วนแสดงผลระดับน้ำและเครื่องสูบน้ำ
-         * ปรับปรุงให้รองรับทั้ง Table Body และ Card Container (สำหรับสถานะปั๊ม)
          */
         function updateTable(elementId, data, rowCreator) {
             const container = document.getElementById(elementId);
@@ -416,14 +388,17 @@
             
             container.innerHTML = ''; // ล้างข้อมูลเก่า
             
-            // ตรวจสอบว่าเป็น Card Container สำหรับปั๊มหรือไม่
             const isPumpCardContainer = elementId === 'pump-status-card-container';
-            
-            // ตรวจสอบข้อมูล Error โดยอิงจากคีย์ที่ถูก sanitize แล้ว
             const checkKey = isPumpCardContainer ? KEY_MAP.PUMP_STATION : KEY_MAP.WATER_POINT; 
-            const isError = data.length === 0 || (data.length > 0 && data[0]?.[checkKey]?.includes('Error'));
+            
+            // ตรวจสอบข้อมูล Error ที่มาจาก Placeholder URL หรือ HTTP Error
+            const isError = data.length === 0 || (data.length > 0 && (data[0]?.[checkKey]?.includes('Error')));
 
             if (isError) {
+                const errorMessage = data.length > 0 && data[0]?.[checkKey]?.includes('Placeholder URL')
+                    ? 'ไม่สามารถดึงข้อมูล: กรุณาแทนที่ URL ตัวแทน {SHEET_ID_X} และ {GID_X} ด้วย URL ที่เผยแพร่จริง'
+                    : 'ไม่สามารถดึงข้อมูลจาก Google Sheet ได้ กรุณาตรวจสอบ URL และสถานะการเผยแพร่ (Publish to the web)';
+                
                 // สำหรับตาราง (Water Level - tbody)
                 if (!isPumpCardContainer) { 
                     const colSpan = 4;
@@ -431,7 +406,7 @@
                         <tr>
                             <td colspan="${colSpan}" class="p-8 text-center text-red-500 bg-red-50/50">
                                 <i data-lucide="CloudOff" class="w-6 h-6 mx-auto mb-2"></i>
-                                ไม่สามารถดึงข้อมูลจาก Google Sheet ได้ กรุณาตรวจสอบ URL และสถานะการเผยแพร่ (Publish to the web)
+                                ${errorMessage}
                             </td>
                         </tr>
                     `;
@@ -440,14 +415,13 @@
                     container.innerHTML = `
                         <div class="w-full p-4 text-center text-red-500 bg-red-50/50 rounded-lg">
                             <i data-lucide="CloudOff" class="w-6 h-6 mx-auto mb-2"></i>
-                            ไม่สามารถดึงข้อมูลสถานะปั๊มได้
+                            ${errorMessage}
                         </div>
                     `;
                 }
             } else {
                 // Render data
                 data.forEach(item => {
-                    // ตรวจสอบว่าคีย์หลักของตารางมีค่าหรือไม่
                     if (!item[checkKey]) {
                          console.warn(`Skipping row: Key '${checkKey}' is missing or key mismatch in sheet data.`);
                          return; 
@@ -459,24 +433,34 @@
             lucide.createIcons();
         }
         
-        // (updateDustboyCard และส่วนอื่นๆ ไม่เปลี่ยนแปลง)
         function updateDustboyCard(data) {
             const card = document.getElementById('dustboy-card');
             if (!card) return;
 
-            const pm25Value = parseFloat(data.pm25);
-            let bgColor = 'bg-green-600';
-            let statusText = 'คุณภาพอากาศดีมาก';
+            const pm25Value = data.pm25; 
+            const isNumericPm25 = !isNaN(parseFloat(pm25Value));
 
-            if (pm25Value > 75) {
-                bgColor = 'bg-red-600';
-                statusText = 'อันตราย (มีผลกระทบต่อสุขภาพ)';
-            } else if (pm25Value > 50) {
-                bgColor = 'bg-orange-600';
-                statusText = 'เริ่มมีผลกระทบต่อสุขภาพ';
-            } else if (pm25Value > 37) {
-                bgColor = 'bg-yellow-600';
-                statusText = 'คุณภาพอากาศปานกลาง';
+            let bgColor = 'bg-gray-400';
+            let statusText = 'กำลังรอข้อมูล...';
+
+            if (isNumericPm25) {
+                const pm25 = parseFloat(pm25Value);
+                if (pm25 > 75) {
+                    bgColor = 'bg-red-600';
+                    statusText = 'อันตราย (มีผลกระทบต่อสุขภาพ)';
+                } else if (pm25 > 50) {
+                    bgColor = 'bg-orange-600';
+                    statusText = 'เริ่มมีผลกระทบต่อสุขภาพ';
+                } else if (pm25 > 37) {
+                    bgColor = 'bg-yellow-600';
+                    statusText = 'คุณภาพอากาศปานกลาง';
+                } else {
+                    bgColor = 'bg-green-600';
+                    statusText = 'คุณภาพอากาศดีมาก';
+                }
+            } else if (pm25Value === "N/A") {
+                bgColor = 'bg-gray-500';
+                statusText = 'ไม่สามารถดึงค่า PM 2.5 ได้';
             }
             
             const finalStatusText = data.status && data.status.length > 5 && !data.status.includes('จำลอง') ? data.status : statusText;
@@ -488,7 +472,7 @@
                             <i data-lucide="CloudDrizzle" class="w-8 h-8 text-white"></i>
                             <p class="text-white/75 text-sm">ค่าฝุ่น PM 2.5 ณ ${data.location}</p>
                         </div>
-                        <span class="text-white text-4xl md:text-5xl font-extrabold leading-none">${data.pm25}</span>
+                        <span class="text-white text-4xl md:text-5xl font-extrabold leading-none">${pm25Value}</span>
                     </div>
                     <div class="mt-auto pt-4 border-t border-white/20">
                         <p class="text-white text-sm font-semibold">${finalStatusText}</p>
@@ -501,14 +485,13 @@
         }
 
         // =================================================================================================================================================
-        // ส่วนที่ 5: ฟังก์ชันหลักในการอัปเดต Dashboard (ปรับปรุงการเรียกใช้สำหรับสถานะปั๊ม)
+        // ส่วนที่ 5: ฟังก์ชันหลักในการอัปเดต Dashboard
         // =================================================================================================================================================
 
         let isUpdating = false;
 
         async function updateDashboard() {
             if (isUpdating) {
-                console.log("Dashboard is currently updating. Skipping this interval.");
                 return;
             }
             isUpdating = true;
@@ -520,7 +503,7 @@
             }
 
             try {
-                // 1. ดึงข้อมูลทั้งหมดพร้อมกัน (Parallel Fetching)
+                // 1. ดึงข้อมูลทั้งหมดพร้อมกัน
                 const [
                     waterLevelData, 
                     chaoPhrayaData, 
@@ -536,10 +519,7 @@
                 // 2. อัปเดตส่วนแสดงผล
                 updateTable('water-level-table-body', waterLevelData, createWaterTableRow);
                 updateTable('chaophraya-table-body', chaoPhrayaData, createWaterTableRow);
-                
-                // *** เปลี่ยนการเรียกใช้สำหรับสถานะปั๊ม: เปลี่ยน ID และใช้ Card Creator Function ***
                 updateTable('pump-status-card-container', pumpStatusData, createPumpStatusCard); 
-                
                 updateDustboyCard(dustboyData);
                 
                 // 3. อัปเดตเวลาล่าสุด
@@ -549,14 +529,11 @@
                 if (lastUpdateTimeElement) {
                     lastUpdateTimeElement.textContent = `อัปเดตล่าสุด: ${timeString}`;
                     lastUpdateTimeElement.classList.remove('animate-pulse');
+                    lastUpdateTimeElement.classList.remove('text-red-500'); // ลบสีแดงเมื่ออัปเดตสำเร็จ
                 }
-                document.getElementById('fetch-status').textContent = 'การอัปเดตสำเร็จ';
-
-                console.log(`Dashboard updated successfully at ${timeString}`);
 
             } catch (error) {
                 console.error("Critical error during dashboard update:", error);
-                document.getElementById('fetch-status').textContent = 'เกิดข้อผิดพลาดในการดึงข้อมูล';
                 if (lastUpdateTimeElement) {
                     lastUpdateTimeElement.textContent = 'ไม่สามารถอัปเดตได้ (โปรดตรวจสอบ Console)';
                     lastUpdateTimeElement.classList.remove('animate-pulse');
@@ -568,22 +545,14 @@
         }
 
         // =================================================================================================================================================
-        // ส่วนที่ 6: การเริ่มต้น (Initialization - ไม่เปลี่ยนแปลง)
+        // ส่วนที่ 6: การเริ่มต้น (Initialization)
         // =================================================================================================================================================
 
         document.addEventListener('DOMContentLoaded', () => {
-            console.log("Dashboard Initializing...");
-            
-            // 1. เรียกใช้งานครั้งแรก
             updateDashboard();
-
-            // 2. ตั้งค่าการอัปเดตทุก 1 ชั่วโมง
             setInterval(updateDashboard, UPDATE_INTERVAL_MS);
-
-            // 3. ผูกปุ่มรีเฟรช
             document.getElementById('refresh-button').addEventListener('click', updateDashboard);
             
-            // 4. ผูกปุ่มปิด Modal (เมื่อคลิกที่พื้นหลัง Modal)
             document.getElementById('inspection-modal').addEventListener('click', (event) => {
                 if (event.target.id === 'inspection-modal' || event.target.closest('#modal-close-button')) {
                     closeInspectionModal();
@@ -593,8 +562,8 @@
 
     </script>
     
-    <!-- Header Section (คงความสูง) -->
-    <header class="mb-6 flex-shrink-0">
+    <!-- Header Section -->
+    <header class="mb-4 flex-shrink-0">
         <div class="flex items-center justify-between flex-wrap gap-4">
             <div>
                 <h1 class="text-3xl font-extrabold text-gray-800">
@@ -614,16 +583,28 @@
                 </button>
             </div>
         </div>
-        <div id="fetch-status" class="text-xs text-right text-gray-400 mt-2"></div>
+
+        <!-- ***** WARNING BOX: แก้ไขปัญหา URL ไม่แสดงข้อมูล ***** -->
+        <div class="mt-4 p-3 bg-yellow-100 border border-yellow-300 rounded-lg text-sm text-yellow-800 flex items-start space-x-2 shadow-inner">
+            <i data-lucide="AlertTriangle" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
+            <p>
+                **คำเตือน:** ตารางระดับน้ำยังไม่แสดงข้อมูล (Sheet 1 และ Sheet 2) โปรดแก้ไข URL ตัวอย่าง
+                (`GOOGLE_SHEET_URL_1` และ `2`) ในส่วน `<script>` 
+                **และ** ตรวจสอบให้แน่ใจว่าคุณได้ **'เผยแพร่สู่เว็บ'** (Publish to the web) 
+                ของ Google Sheet ทั้งหมดแล้ว
+            </p>
+        </div>
+        <!-- ************************************************** -->
+
     </header>
 
-    <!-- Main Content Grid (กินพื้นที่ความสูงที่เหลือทั้งหมด) -->
+    <!-- Main Content Grid -->
     <main class="grid grid-cols-1 lg:grid-cols-3 gap-6 main-content-area">
         
         <!-- Column 1: Water Level Monitoring (Sheet 1) & Dustboy API -->
         <div class="lg:col-span-2 flex flex-col space-y-6 h-full">
             
-            <!-- Dustboy API Card (Fixed Height) -->
+            <!-- Dustboy API Card -->
             <div id="dustboy-card" class="p-6 rounded-xl shadow-lg bg-gray-300 h-40 flex-shrink-0">
                 <!-- Content will be injected by JavaScript -->
                 <div class="animate-pulse flex space-x-4">
@@ -647,7 +628,7 @@
                     สถานะการตรวจวัดระดับน้ำ (4 จุด - 4 รอบ/วัน)
                 </h2>
                 <!-- Scrollable Table Container -->
-                <div class="overflow-y-auto flex-grow -mx-6 px-6"> <!-- -mx-6, px-6 เพื่อขยายตารางให้เต็มความกว้าง Card -->
+                <div class="overflow-y-auto flex-grow -mx-6 px-6"> 
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
                             <tr>
@@ -714,7 +695,7 @@
                     <i data-lucide="Box" class="w-5 h-5 mr-2 text-indigo-600"></i>
                     สถานะเครื่องสูบน้ำ (14 สถานี)
                 </h2>
-                <!-- Card Container: ใช้ flex-wrap และ gap เพื่อให้เรียงต่อกันตามแนวนอน -->
+                <!-- Card Container: ปรับให้มีการแบ่งคอลัมน์ในขนาดหน้าจอที่ใหญ่ขึ้น -->
                 <div id="pump-status-card-container" class="flex flex-wrap gap-2 overflow-y-auto p-1 -m-1 flex-grow">
                     <!-- Cards will be injected by JavaScript -->
                 </div>
@@ -726,7 +707,7 @@
     <footer class="mt-4 flex-shrink-0 text-center text-sm text-gray-400">
         <p>Dashboard Powered by Gemini and deployed on GitHub Pages.</p>
         <p class="mt-1 font-semibold text-gray-600">
-            โปรดจำไว้ว่าคุณต้องแทนที่ URL ตัวอย่างในโค้ดด้วยลิงก์ Google Sheet ที่เผยแพร่แล้ว และ Dustboy API จริง
+            โปรดจำไว้ว่าคุณต้องแทนที่ URL ตัวอย่างในโค้ดด้วยลิงก์ Google Sheet ที่เผยแพร่แล้ว และชื่อโดเมนหลักของ Dustboy API จริง
         </p>
     </footer>
 
@@ -754,7 +735,7 @@
                     <p id="modal-inspection-count" class="text-4xl font-extrabold text-blue-600">
                         0
                     </p>
-                    <p class="text-xs text-gray-500 mt-2">* ข้อมูลจากคอลัมน์ "จำนวนครั้งการเข้าตรวจ"</p>
+                    <p class="text-xs text-gray-500 mt-2">* ข้อมูลจากคอลัมน์ "จำนวนครั้งการเข้าตรวจ" ใน Sheet 3</p>
                 </div>
             </div>
             
