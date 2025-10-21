@@ -53,22 +53,40 @@
         
         // *************************************************************************************************************************************************
         // ** สำคัญ: กรุณาแทนที่ URL ตัวอย่างเหล่านี้ด้วย URL จริงของ Google Sheets ที่คุณเผยแพร่เป็น CSV **
-        // ** หากการแสดงผลตารางยังเป็น "ไม่สามารถดึงข้อมูลได้" โปรดตรวจสอบว่าคุณได้ 'เผยแพร่สู่เว็บ' แล้ว **
         // *************************************************************************************************************************************************
         const GOOGLE_SHEET_URL_1 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT452CdpcF_hoA-_x3a6Ji0YKeWTuSr_9CM0We83aAAPiBWMRoHrKEujaYtEzHMZYMLEL8wKa10NPYF/pub?gid=675852265&single=true&output=csv"; // ตรวจวัดระดับ
         const GOOGLE_SHEET_URL_2 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT5OYSm3Hn1V4kegJf9x3iK2OGvUIL7vbnWryNUsx15VCm4NdxoVoWZMx1vWTlKcZskeD-YYjhbKn2V/pub?gid=202563025&single=true&output=csv"; // ข้อมูลระดับน้ำเจ้าพระยา
         const GOOGLE_SHEET_URL_3 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTyPcfGQReUPOHckF-6bA4UOucC8cbqRvHj-aTP7uWRkBjvQ4HrieGIhcet4OH9O0DjT_M2FM3QaaV9/pub?gid=273571070&single=true&output=csv"; // ข้อมูลการตรวจสอบการทำงานของเครื่องสูบน้ำ
         
-        // ** Dustboy URL ที่คุณระบุ: ต้องเปลี่ยน 'https://example.com' เป็นชื่อโดเมนจริง **
+        // ** Dustboy API URL **
         const DUSTBOY_API_URL = "https://open-api.cmuccdc.org/api/dustboy/station?apikey=7rLtfWDxADFmNXcQ8gjViOHo0ToFDotJDJok74vL"; 
         
         // ระยะเวลาการอัปเดต: 1 ชั่วโมง = 3600000 มิลลิวินาที
         const UPDATE_INTERVAL_MS = 3600000;
 
         // =================================================================================================================================================
-        // ส่วนที่ 2: ฟังก์ชันช่วยเหลือและการกำหนดคีย์มาตรฐาน
+        // ส่วนที่ 2: การกำหนดค่าชื่อคอลัมน์ (USER CONFIGURATION) และ KEY MAP
         // =================================================================================================================================================
         
+        /**
+         * *** สำคัญ: กรุณาใส่ชื่อคอลัมน์ EXACTLY ตามที่ปรากฏใน Google Sheet ของคุณ ***
+         * (หากคอลัมน์ใน Sheet คือ "ระดับน้ำ ปัจจุบัน" ให้ใส่ "ระดับน้ำ ปัจจุบัน")
+         */
+        const USER_COLUMN_NAMES = {
+            SHEET_1_2: {
+                POINT: 'จุดวัด',                 // ชื่อคอลัมน์ใน Sheet 1 และ 2 สำหรับจุดวัด
+                LEVEL: 'ระดับน้ำปัจจุบัน',       // ชื่อคอลัมน์สำหรับระดับน้ำ
+                DIFF: 'ส่วนต่างระดับน้ำ',         // ชื่อคอลัมน์สำหรับส่วนต่าง
+                ALERT: 'ระดับการแจ้งเตือน',       // ชื่อคอลัมน์สำหรับระดับแจ้งเตือน
+            },
+            SHEET_3: {
+                STATION: 'สถานีสูบน้ำ',           // ชื่อคอลัมน์ใน Sheet 3 สำหรับสถานีสูบน้ำ
+                STATUS: 'สถานะปั๊ม',             // ชื่อคอลัมน์สำหรับสถานะปั๊ม
+                UPDATE: 'เวลาล่าสุด',             // ชื่อคอลัมน์สำหรับเวลาอัปเดต
+                INSPECTIONS: 'จำนวนครั้งการเข้าตรวจ', // *** คอลัมน์ที่กำหนดค่า Tooltip (หากเป็น 0 ให้แก้ค่านี้) ***
+            }
+        };
+
         /**
          * ทำความสะอาดข้อความ โดยการลบช่องว่างทั้งหมด (รวมถึงช่องว่างที่ซ่อนอยู่)
          * @param {string} text - ข้อความที่ต้องการทำความสะอาด
@@ -82,19 +100,20 @@
 
         /**
          * แผนที่คีย์มาตรฐานที่ใช้ในการดึงข้อมูลจาก Array Object 
+         * ใช้ค่าจาก USER_COLUMN_NAMES ที่ถูก sanitize แล้ว
          */
         const KEY_MAP = {
             // Keys for Water Level (Sheet 1 & 2)
-            WATER_POINT: sanitizeText('จุดวัด'), 
-            CURRENT_LEVEL: sanitizeText('ระดับน้ำปัจจุบัน'),
-            DIFF_LEVEL: sanitizeText('ส่วนต่างระดับน้ำ'),
-            ALERT_LEVEL: sanitizeText('ระดับการแจ้งเตือน'),
+            WATER_POINT: sanitizeText(USER_COLUMN_NAMES.SHEET_1_2.POINT), 
+            CURRENT_LEVEL: sanitizeText(USER_COLUMN_NAMES.SHEET_1_2.LEVEL),
+            DIFF_LEVEL: sanitizeText(USER_COLUMN_NAMES.SHEET_1_2.DIFF),
+            ALERT_LEVEL: sanitizeText(USER_COLUMN_NAMES.SHEET_1_2.ALERT),
 
             // Keys for Pump Status (Sheet 3)
-            PUMP_STATION: sanitizeText('สถานีสูบน้ำ'),
-            PUMP_STATUS: sanitizeText('สถานะปั๊ม'),
-            LAST_UPDATE: sanitizeText('เวลาล่าสุด'),
-            INSPECTIONS: sanitizeText('จำนวนครั้งการเข้าตรวจ'), // คีย์สำหรับจำนวนครั้งที่เข้าตรวจ
+            PUMP_STATION: sanitizeText(USER_COLUMN_NAMES.SHEET_3.STATION),
+            PUMP_STATUS: sanitizeText(USER_COLUMN_NAMES.SHEET_3.STATUS),
+            LAST_UPDATE: sanitizeText(USER_COLUMN_NAMES.SHEET_3.UPDATE),
+            INSPECTIONS: sanitizeText(USER_COLUMN_NAMES.SHEET_3.INSPECTIONS), 
         };
 
         /**
@@ -105,7 +124,9 @@
             if (lines.length === 0) return [];
 
             const rawHeaders = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+            console.log("[DEBUG] Raw Headers from CSV:", rawHeaders);
             const cleanHeaders = rawHeaders.map(h => sanitizeText(h)); 
+            console.log("[DEBUG] Cleaned Headers (Used for KEY_MAP matching):", cleanHeaders);
             
             const result = [];
 
@@ -116,12 +137,27 @@
                 const values = currentLine.split(',').map(v => v.trim().replace(/"/g, ''));
                 
                 if (values.length === cleanHeaders.length) {
+                    let hasRequiredKey = false;
                     for (let j = 0; j < cleanHeaders.length; j++) {
                         obj[cleanHeaders[j]] = values[j]; 
+                        // ตรวจสอบว่ามีคอลัมน์ที่จำเป็นสำหรับแสดงผลไหม
+                        if (cleanHeaders[j] === KEY_MAP.WATER_POINT || cleanHeaders[j] === KEY_MAP.PUMP_STATION) {
+                             hasRequiredKey = true;
+                        }
                     }
-                    result.push(obj);
+                    
+                    if (hasRequiredKey || i < 3) {
+                         result.push(obj);
+                    } else {
+                         console.warn(`[Parsing Warning] Skipping row ${i+1} due to missing required key (Water Point or Pump Station).`);
+                    }
+
+                    if (result.length <= 3) {
+                        console.log(`[DEBUG] Parsed Object ${result.length}:`, obj);
+                    }
+
                 } else {
-                    console.warn(`[Parsing Error] Skipping data line ${i+1}: Column count mismatch.`);
+                    console.warn(`[Parsing Error] Skipping data line ${i+1}: Column count mismatch (${values.length} found, ${cleanHeaders.length} expected).`);
                 }
             }
             return result;
@@ -131,6 +167,7 @@
          * ฟังก์ชันหลักในการดึงข้อมูลจาก Google Sheet (CSV) 
          */
         async function fetchDataFromSheet(url) {
+            console.log(`[INFO] Attempting to fetch data from URL: ${url}`);
             try {
                 const response = await fetch(url);
                 if (!response.ok) {
@@ -296,6 +333,8 @@
         function createPumpStatusCard(data) {
             const pumpStation = data[KEY_MAP.PUMP_STATION] || 'N/A';
             const pumpStatus = data[KEY_MAP.PUMP_STATUS] || 'ไม่พบสถานะ';
+            
+            // ใช้ค่าจาก KEY_MAP.INSPECTIONS ซึ่งถูก sanitize มาจาก USER_COLUMN_NAMES
             const inspectionCount = data[KEY_MAP.INSPECTIONS] || '0'; 
             
             const sanitizedStatus = sanitizeText(pumpStatus);
@@ -353,7 +392,8 @@
 
             if (modal && stationNameElement && inspectionCountElement) {
                 stationNameElement.textContent = stationName;
-                inspectionCountElement.textContent = inspectionCount;
+                // แสดงค่าจำนวนครั้งที่ถูกส่งเข้ามา
+                inspectionCountElement.textContent = inspectionCount; 
                 modal.classList.remove('hidden');
                 modal.classList.add('flex');
             }
@@ -387,7 +427,7 @@
             const isError = data.length === 0 || (data.length > 0 && (data[0]?.[checkKey]?.includes('Error')));
 
             if (isError) {
-                const errorMessage = 'ไม่สามารถดึงข้อมูลจาก Google Sheet ได้ กรุณาตรวจสอบ URL และสถานะการเผยแพร่ (Publish to the web)';
+                const errorMessage = 'ไม่สามารถดึงข้อมูลจาก Google Sheet ได้ กรุณาตรวจสอบ URL, สถานะการเผยแพร่ และชื่อคอลัมน์ในส่วน USER_COLUMN_NAMES';
                 
                 // สำหรับตาราง (Water Level - tbody)
                 if (!isPumpCardContainer) { 
@@ -412,8 +452,9 @@
             } else {
                 // Render data
                 data.forEach(item => {
+                    // ใช้ KEY_MAP.WATER_POINT หรือ KEY_MAP.PUMP_STATION เพื่อยืนยันว่าข้อมูลครบถ้วน
                     if (!item[checkKey]) {
-                         console.warn(`Skipping row: Key '${checkKey}' is missing or key mismatch in sheet data.`);
+                         console.warn(`Skipping row: Key '${checkKey}' is missing in sheet data. Check column names in USER_COLUMN_NAMES.`);
                          return; 
                     }
                     container.innerHTML += rowCreator(item);
@@ -684,7 +725,7 @@
     <footer class="mt-4 flex-shrink-0 text-center text-sm text-gray-400">
         <p>Dashboard Powered by Gemini and deployed on GitHub Pages.</p>
         <p class="mt-1 font-semibold text-gray-600">
-            **โปรดทราบ:** หากข้อมูลยังไม่แสดง ให้ตรวจสอบว่าคุณได้แทนที่ URL ตัวแทนและเผยแพร่ Google Sheet สู่เว็บแล้ว
+            **โปรดทราบ:** หากข้อมูลยังไม่แสดง ให้ตรวจสอบ Console และแก้ไขชื่อคอลัมน์ในส่วน USER_COLUMN_NAMES (บรรทัด ~40)
         </p>
     </footer>
 
@@ -712,7 +753,7 @@
                     <p id="modal-inspection-count" class="text-4xl font-extrabold text-blue-600">
                         0
                     </p>
-                    <p class="text-xs text-gray-500 mt-2">* ข้อมูลจากคอลัมน์ "จำนวนครั้งการเข้าตรวจ" ใน Sheet 3</p>
+                    <p class="text-xs text-gray-500 mt-2">* ข้อมูลจากคอลัมน์ที่ท่านกำหนดใน USER_COLUMN_NAMES</p>
                 </div>
             </div>
             
