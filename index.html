@@ -33,16 +33,16 @@
             padding: 0;
         }
         .full-screen-container {
-            height: 100vh;
+            height: 100vh; /* ใช้ความสูงเต็ม viewport */
             display: flex;
             flex-direction: column;
             padding: 1.5rem; 
-            overflow: hidden; 
+            overflow: hidden; /* ซ่อน scrollbar หลักของ body */
         }
         
         /* ให้ Main Content ใช้พื้นที่ที่เหลือทั้งหมด และสามารถเลื่อนได้ */
         .main-content-scroll {
-            overflow-y: auto;
+            overflow-y: auto; /* อนุญาตให้เลื่อนได้เฉพาะพื้นที่เนื้อหาหลัก */
             flex-grow: 1;
         }
 
@@ -70,6 +70,13 @@
         
         // ระยะเวลาการอัปเดต: 1 ชั่วโมง = 3600000 มิลลิวินาที
         const UPDATE_INTERVAL_MS = 3600000;
+
+        // ตรวจสอบว่า URL ยังเป็นค่า placeholder หรือไม่
+        const PLACEHOLDER_URL_CHECK = 
+            GOOGLE_SHEET_URL_1.includes('{SHEET_ID_1}') || 
+            GOOGLE_SHEET_URL_2.includes('{SHEET_ID_2}') || 
+            GOOGLE_SHEET_URL_3.includes('{SHEET_ID_3}') || 
+            GOOGLE_SHEET_URL_4.includes('{SHEET_ID_4}');
 
         // =================================================================================================================================================
         // ส่วนที่ 2: การกำหนดค่าชื่อคอลัมน์ (USER CONFIGURATION) และ KEY MAP
@@ -117,7 +124,7 @@
         const KEY_MAP = {
             // Keys for Water Level (Sheet 1 & 2)
             WATER_POINT: sanitizeText(USER_COLUMN_NAMES.SHEET_1_2.POINT), 
-            CURRENT_LEVEL: sanitizeText(USER_COLUMN_NAMES.SHEAT_1_2.LEVEL),
+            CURRENT_LEVEL: sanitizeText(USER_COLUMN_NAMES.SHEET_1_2.LEVEL),
             DIFF_LEVEL: sanitizeText(USER_COLUMN_NAMES.SHEET_1_2.DIFF),
             ALERT_LEVEL: sanitizeText(USER_COLUMN_NAMES.SHEET_1_2.ALERT),
 
@@ -525,10 +532,11 @@
             
             // ใช้ขนาดของ Container ปัจจุบัน
             const containerWidth = container.clientWidth;
-            const containerHeight = container.clientHeight;
+            // ใช้ Container Height (ต้องคำนึงถึงพื้นที่ของ Header Card ด้วย)
+            const containerHeight = container.clientHeight; 
             
             const width = Math.max(containerWidth - margin.left - margin.right, 300);
-            const height = Math.max(containerHeight - margin.top - margin.bottom, 300);
+            const height = Math.max(containerHeight - margin.top - margin.bottom, 250); // ลดความสูงเริ่มต้น
 
             // 4. สร้าง SVG Element
             const svg = d3.select(containerId)
@@ -679,6 +687,32 @@
             lucide.createIcons();
         }
 
+        /**
+         * ฟังก์ชันตรวจสอบและแจ้งเตือนเมื่อ URL ยังเป็นค่าเริ่มต้น
+         */
+        function checkPlaceholderUrls() {
+            const errorElement = document.getElementById('url-placeholder-error');
+            if (PLACEHOLDER_URL_CHECK) {
+                errorElement.innerHTML = `
+                    <div class="mt-4 p-3 bg-red-100 border border-red-300 rounded-lg text-red-800 font-medium">
+                        ⚠️ ข้อผิดพลาด: URL ยังเป็นค่าเริ่มต้น!
+                        <span class="block mt-1 font-normal text-sm">กรุณาแทนที่ GOOGLE_SHEET_URL_1 ถึง 4 ในโค้ด JS ด้วยลิงก์ CSV ที่เผยแพร่แล้วของท่าน</span>
+                    </div>
+                `;
+                // อัปเดตข้อความโหลดหลัก
+                const lastUpdateTimeElement = document.getElementById('last-update-time');
+                if (lastUpdateTimeElement) {
+                    lastUpdateTimeElement.textContent = 'หยุดการอัปเดต (ข้อผิดพลาด URL)';
+                    lastUpdateTimeElement.classList.remove('animate-pulse');
+                    lastUpdateTimeElement.classList.add('text-red-500');
+                }
+                return true;
+            } else {
+                errorElement.innerHTML = '';
+                return false;
+            }
+        }
+
         // =================================================================================================================================================
         // ส่วนที่ 5: ฟังก์ชันหลักในการอัปเดต Dashboard
         // =================================================================================================================================================
@@ -686,7 +720,8 @@
         let isUpdating = false;
 
         async function updateDashboard() {
-            if (isUpdating) {
+            if (isUpdating || checkPlaceholderUrls()) {
+                // หยุดการทำงานหากกำลังอัปเดตอยู่ หรือ URL ยังเป็น Placeholder
                 return;
             }
             isUpdating = true;
@@ -695,6 +730,7 @@
             if (lastUpdateTimeElement) {
                 lastUpdateTimeElement.textContent = 'กำลังอัปเดตข้อมูล...';
                 lastUpdateTimeElement.classList.add('animate-pulse');
+                lastUpdateTimeElement.classList.remove('text-red-500'); 
             }
 
             try {
@@ -727,7 +763,6 @@
                 if (lastUpdateTimeElement) {
                     lastUpdateTimeElement.textContent = `อัปเดตล่าสุด: ${timeString}`;
                     lastUpdateTimeElement.classList.remove('animate-pulse');
-                    lastUpdateTimeElement.classList.remove('text-red-500'); // ลบสีแดงเมื่ออัปเดตสำเร็จ
                 }
 
             } catch (error) {
@@ -747,8 +782,14 @@
         // =================================================================================================================================================
 
         document.addEventListener('DOMContentLoaded', () => {
-            updateDashboard();
-            setInterval(updateDashboard, UPDATE_INTERVAL_MS);
+            checkPlaceholderUrls(); // ตรวจสอบ URL ทันที
+            
+            // เริ่มต้นการอัปเดตเฉพาะเมื่อ URL ไม่ใช่ Placeholder
+            if (!PLACEHOLDER_URL_CHECK) {
+                updateDashboard();
+                setInterval(updateDashboard, UPDATE_INTERVAL_MS);
+            }
+            
             document.getElementById('refresh-button').addEventListener('click', updateDashboard);
             
             document.getElementById('inspection-modal').addEventListener('click', (event) => {
@@ -770,6 +811,8 @@
                 <p class="text-gray-500 mt-1">
                     ภาพรวมสถานการณ์ระดับน้ำ และเครื่องสูบน้ำแบบเรียลไทม์
                 </p>
+                <!-- Area for URL Placeholder Error Message -->
+                <div id="url-placeholder-error"></div>
             </div>
             <div class="flex items-center space-x-3">
                 <span id="last-update-time" class="text-sm font-medium text-gray-600 transition-all duration-500">
@@ -786,18 +829,21 @@
     <!-- Main Content Container with Scrolling -->
     <div class="main-content-scroll">
         <!-- Main Content Grid (1 Column on Mobile, 2 Columns on MD+) -->
-        <main class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- md:h-[calc(100vh-8rem)] ทำให้ Grid ใช้พื้นที่ความสูงที่เหลือทั้งหมดบน Desktop -->
+        <main class="grid grid-cols-1 md:grid-cols-2 gap-6 md:h-[calc(100vh-8rem)]">
             
             <!-- 1. Sheet URL 1: สถานะการตรวจวัดระดับ (Top Left) -->
-            <div class="order-1 bg-white p-6 rounded-xl shadow-md flex flex-col overflow-hidden h-full min-h-[400px]">
+            <!-- h-full ทำให้ Container นี้ใช้พื้นที่ 50% ของความสูง Grid (1 ใน 2 แถว) -->
+            <div class="order-1 bg-white p-6 rounded-xl shadow-md flex flex-col overflow-hidden h-full">
                 <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center flex-shrink-0">
                     <i data-lucide="Gauge" class="w-5 h-5 mr-2 text-blue-600"></i>
                     สถานะการตรวจวัดระดับน้ำ (4 จุด - 4 รอบ/วัน)
                 </h2>
                 <!-- Scrollable Table Container -->
-                <div class="overflow-x-auto flex-grow -mx-6 px-6"> 
+                <!-- flex-grow ทำให้ตารางใช้พื้นที่ความสูงที่เหลือของ Card -->
+                <div class="overflow-x-auto overflow-y-auto flex-grow -mx-6 px-6"> 
                     <!-- table-auto เพื่อปรับความกว้างให้พอดีข้อความ -->
-                    <table class="table-auto divide-y divide-gray-200"> 
+                    <table class="table-auto divide-y divide-gray-200 w-full"> 
                         <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
                             <tr>
                                 <!-- whitespace-nowrap เพื่อไม่ให้ข้อความหัวตารางแตกบรรทัด -->
@@ -823,7 +869,7 @@
             </div>
 
             <!-- 2. Sheet URL 2: ระดับน้ำเจ้าพระยา (Top Right) -->
-            <div class="order-2 bg-white p-6 rounded-xl shadow-md flex flex-col overflow-hidden flex-shrink-0 min-h-[400px]">
+            <div class="order-2 bg-white p-6 rounded-xl shadow-md flex flex-col overflow-hidden h-full">
                 <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center flex-shrink-0">
                     <i data-lucide="Waves" class="w-5 h-5 mr-2 text-teal-600"></i>
                     ข้อมูลระดับน้ำเจ้าพระยา (4 จุด - 3 รอบ/วัน)
@@ -855,7 +901,7 @@
             </div>
             
             <!-- 3. Sheet URL 4: ปริมาณและระยะเวลาฝนตก (Bottom Left) -->
-            <div class="order-3 bg-white p-6 rounded-xl shadow-md flex flex-col min-h-[450px]">
+            <div class="order-3 bg-white p-6 rounded-xl shadow-md flex flex-col h-full">
                 <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center flex-shrink-0">
                     <i data-lucide="CloudRain" class="w-5 h-5 mr-2 text-sky-600"></i>
                     ปริมาณและระยะเวลาฝนตก (มม.)
@@ -865,8 +911,8 @@
                     <div id="rain-duration-card-container" class="absolute top-0 right-0 z-20">
                         <!-- Card will be injected here -->
                     </div>
-                    <!-- Bar Chart Container: pt-16 เพื่อเว้นพื้นที่ให้ Card ด้านบน -->
-                    <div id="rainfall-chart-container" class="w-full h-full pt-16"> 
+                    <!-- Bar Chart Container: flex-grow เพื่อยึดพื้นที่ที่เหลือ -->
+                    <div id="rainfall-chart-container" class="w-full h-full flex-grow pt-16"> 
                         <!-- Chart will be drawn here, or error message will be displayed -->
                     </div>
                 </div>
@@ -874,12 +920,12 @@
 
 
             <!-- 4. Sheet URL 3: สถานะเครื่องสูบน้ำ (Bottom Right) -->
-            <div class="order-4 bg-white p-6 rounded-xl shadow-md flex-grow flex flex-col min-h-[450px]">
+            <div class="order-4 bg-white p-6 rounded-xl shadow-md flex flex-col h-full">
                 <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center flex-shrink-0">
                     <i data-lucide="Box" class="w-5 h-5 mr-2 text-indigo-600"></i>
                     สถานะเครื่องสูบน้ำ (14 สถานี)
                 </h2>
-                <!-- Card Container: ปรับเป็น 2 คอลัมน์บนมือถือ และ w-full ใน Grid 2 คอลัมน์หลัก -->
+                <!-- Card Container: flex-grow ทำให้ใช้พื้นที่ความสูงที่เหลือทั้งหมด -->
                 <div id="pump-status-card-container" class="flex flex-wrap gap-2 overflow-y-auto p-1 -m-1 flex-grow justify-start">
                     <!-- Cards will be injected by JavaScript -->
                 </div>
@@ -892,7 +938,7 @@
     <footer class="mt-4 flex-shrink-0 text-center text-sm text-gray-400">
         <p>Dashboard Powered by Gemini and deployed on GitHub Pages.</p>
         <p class="mt-1 font-semibold text-gray-600">
-            **สำคัญ:** หากข้อมูล Sheet 4 (ปริมาณน้ำฝน) ไม่แสดง โปรดตรวจสอบ GOOGLE_SHEET_URL_4 และ ชื่อคอลัมน์ใน USER_COLUMN_NAMES
+            **สำคัญ:** หากข้อมูลไม่โหลด หรือขึ้นว่า "หยุดการอัปเดต" โปรดตรวจสอบ GOOGLE_SHEET_URL ทั้ง 4 ลิงก์ว่าถูกแทนที่ด้วยลิงก์ CSV ที่เผยแพร่แล้วหรือไม่
         </p>
     </footer>
 
