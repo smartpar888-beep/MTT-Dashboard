@@ -20,31 +20,39 @@
             font-family: 'Kanit', sans-serif;
         }
         
+        /* -------------------------------------------------------- */
+        /* CRITICAL FIX: Body & HTML Layout for Mobile Scrolling */
+        /* -------------------------------------------------------- */
         html, body {
-            height: 100%; 
             margin: 0;
             padding: 0;
+            min-height: 100vh; /* Ensure it covers at least the viewport height */
         }
-        
-        .full-screen-container {
-            height: 100vh; 
+
+        /* Container for the overall layout: uses flex-col to stack header/main/footer */
+        .app-container {
             display: flex;
             flex-direction: column;
-            padding: 1.5rem; 
+            padding: 1.5rem; /* Padding for all screens */
         }
+        /* -------------------------------------------------------- */
+
 
         /* -------------------------------------------------------- */
         /* Custom Grid: Main Layout - Responsive Logic is HERE */
         /* -------------------------------------------------------- */
         .custom-dashboard-grid {
-            height: 100%; 
-            display: grid;
             /* Default: Mobile/Small screen (Vertical) - Column layout */
             grid-template-rows: auto; 
             grid-template-columns: 1fr; 
             gap: 1.5rem;
-            overflow-y: auto; /* Allow scrolling on small screens */
-            padding-bottom: 1rem; /* Add padding for bottom margin */
+            
+            /* CRITICAL FIX: Allow content to define height on mobile (height: auto) */
+            height: auto; 
+            overflow-y: visible; /* Allow body to scroll */
+            
+            padding-bottom: 1rem; /* Add padding for bottom margin on mobile */
+            flex-grow: 1; /* Allow it to take up available vertical space on large screens */
         }
 
         /* Desktop/Large Screen (Horizontal) - Use the 4-Area Grid */
@@ -52,7 +60,9 @@
             .custom-dashboard-grid {
                 grid-template-rows: 1.5fr 1fr; /* 60/40 height split */
                 grid-template-columns: repeat(12, 1fr); 
+                height: 100%; /* Set to 100% of calculated height on large screens */
                 overflow-y: hidden; /* No scrolling on large screens */
+                padding-bottom: 0; /* Remove mobile-specific padding */
             }
             .area-1-orange { grid-column: span 8; grid-row: 1; height: 100%; }
             .area-2-yellow { grid-column: span 4; grid-row: 1; height: 100%; }
@@ -66,7 +76,7 @@
                 /* Tablet View: Stack horizontally but allow scrolling */
                 grid-template-rows: auto auto auto auto; 
                 grid-template-columns: repeat(12, 1fr);
-                overflow-y: auto;
+                overflow-y: visible; /* Allow body to scroll */
             }
             .area-1-orange { grid-column: span 12; grid-row: 1; min-height: 400px; }
             .area-2-yellow { grid-column: span 12; grid-row: 2; min-height: 300px; }
@@ -83,12 +93,12 @@
             border-collapse: collapse;
         }
         
-        /* Area 1: Table (8/12 Width - เยอะ) - Remove explicit font-size */
+        /* Area 1: Table (8/12 Width - เยอะ) */
         .table-td-area1, .table-th-area1 {
             padding: 0.35em 0.6em; 
         }
 
-        /* Area 2: Table (4/12 Width - น้อย) - Remove explicit font-size */
+        /* Area 2: Table (4/12 Width - น้อย) */
         .table-td-area2, .table-th-area2 { 
             padding: 0.25em 0.4em; 
         }
@@ -123,7 +133,7 @@
 
     </style>
 </head>
-<body class="bg-gray-50 full-screen-container">
+<body class="bg-gray-50 app-container">
     
     <script>
         // =================================================================================================================================================
@@ -817,8 +827,8 @@
         </div>
     </header>
     
-    <!-- Main Content Container: ใช้คลาส responsive grid ใหม่ -->
-    <main class="custom-dashboard-grid lg:h-[calc(100vh-100px)]"> 
+    <!-- Main Content Container: ใช้ flex-grow เพื่อขยายพื้นที่ตามความสูงที่เหลือบน Desktop แต่ปล่อยให้ content กำหนดความสูงเองบน Mobile -->
+    <main class="custom-dashboard-grid flex-grow lg:h-[calc(100vh-140px)]"> 
             
         <!-- 1. Area 1: ข้อมูลระดับน้ำเมืองทองธานี -->
         <div class="area-1-orange bg-white p-6 rounded-xl shadow-lg flex flex-col overflow-hidden">
