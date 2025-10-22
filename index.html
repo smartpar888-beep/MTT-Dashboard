@@ -42,84 +42,83 @@
             display: grid;
             /* 2 แถว: 50% / 50% */
             grid-template-rows: 1fr 1fr; 
-            /* 12 คอลัมน์ (เพื่อกำหนดสัดส่วน 8/4 และ 5/7 ได้ง่าย) */
+            /* 12 คอลัมน์ (เพื่อกำหนดสัดส่วน) */
             grid-template-columns: repeat(12, 1fr); 
             gap: 1.5rem;
             /* ป้องกันการ Scroll ภายใน Grid */
             overflow: hidden; 
         }
 
-        /* 1. Area 1 (Sheet 1) - Top Left, 2/3 Width */
+        /* 1. Area 1 (Sheet 1) - Top Left */
         .area-1-orange {
             grid-column: span 8; /* 8/12 = 66.6% */
             grid-row: 1;
         }
 
-        /* 2. Area 2 (Sheet 2) - Top Right, 1/3 Width */
+        /* 2. Area 2 (Sheet 2) - Top Right */
         .area-2-yellow {
             grid-column: span 4; /* 4/12 = 33.3% */
             grid-row: 1;
         }
 
-        /* 3. Area 3 (Sheet 4 - Graph) - Bottom Left, 2/5 Width */
+        /* 3. Area 3 (Sheet 4 - Graph) - Bottom Left (NEW: 4/12) */
         .area-3-blue {
-            /* 5/12 = 41.6% (ใกล้เคียง 2/5 = 40% ที่สุดในระบบ 12 คอลัมน์) */
-            grid-column: span 5; 
+            grid-column: span 4; /* 4/12 = 33.3% */
             grid-row: 2;
         }
         
-        /* 4. Area 4 (Sheet 3 - Cards) - Bottom Right, 3/5 Width */
+        /* 4. Area 4 (Sheet 3 - Cards) - Bottom Right (NEW: 8/12) */
         .area-4-green {
-            /* 7/12 = 58.3% (ใกล้เคียง 3/5 = 60% ที่สุดในระบบ 12 คอลัมน์) */
-            grid-column: span 7; 
+            grid-column: span 8; /* 8/12 = 66.6% */
             grid-row: 2;
         }
         
         /* -------------------------------------------------------- */
-        /* Custom Styles for Extreme Fit to Frame (New) */
+        /* Custom Styles for Consistency and Extreme Fit to Frame */
+        /* (Font sizes are consistent across Area 1 and Area 2) */
         /* -------------------------------------------------------- */
         
-        /* สำหรับตาราง Area 1 (ลดลง ~20%) */
+        /* *** Area 1 Styles (Standard Small Font, Standard Padding) *** */
         .table-td-area1 { 
             padding: 0.35rem 0.6rem; 
-            font-size: 0.75rem; /* text-xs */
+            font-size: 0.75rem; /* 12px (text-xs) - Base data font size */
         }
-        .table-th-area1 { /* Header Text for Area 1 */
+        .table-th-area1 { 
             padding: 0.35rem 0.6rem;
-            font-size: 0.65rem; /* ~10px */
+            font-size: 0.65rem; /* ~10.4px - Header text size */
             font-weight: 600;
             color: #6b7280; /* gray-500 */
             text-transform: uppercase;
         }
         .text-lg-area1 { /* สำหรับค่าระดับน้ำปัจจุบันใน Area 1 */
-            font-size: 0.95rem; /* Reduced from 1.125rem */
+            font-size: 0.85rem; /* ~13.6px - Current level value */
         }
 
-        /* สำหรับตาราง Area 2 (ลดลง ~10%) */
+        /* *** Area 2 Styles (Same Font Size, Reduced Padding for Narrow Fit) *** */
         .table-td-area2 { 
-            padding: 0.15rem 0.3rem; 
-            font-size: 0.625rem; /* 10px */
+            padding: 0.15rem 0.3rem; /* Padding Reduced Significantly for FIT */
+            font-size: 0.75rem; /* 12px (text-xs) - Base data font size (CONSISTENT with Area 1) */
         }
-        .table-th-area2 { /* Header Text for Area 2 */
-            padding: 0.15rem 0.3rem;
-            font-size: 0.55rem; /* ~9px (Extremely small) */
+        .table-th-area2 { 
+            padding: 0.15rem 0.3rem; /* Padding Reduced Significantly for FIT */
+            font-size: 0.65rem; /* ~10.4px - Header text size (CONSISTENT with Area 1) */
             font-weight: 600;
             color: #6b7280; /* gray-500 */
             text-transform: uppercase;
         }
         .text-base-area2 { /* สำหรับค่าระดับน้ำปัจจุบันใน Area 2 */
-            font-size: 0.75rem; /* text-xs */
+            font-size: 0.85rem; /* ~13.6px - Current level value (CONSISTENT with Area 1) */
         }
         
         /* ปรับขนาด Status Badge ให้เล็กลงมากเพื่อให้พอดีแถว */
         .status-badge {
             padding: 0.05rem 0.3rem; 
-            font-size: 0.55rem; /* ~9px */
+            font-size: 0.75rem; /* 12px (text-xs) - Base data font size (CONSISTENT with Area 1) */
             white-space: nowrap; 
         }
         .status-badge i { /* Icon inside status badge */
-             width: 0.5rem; /* 8px */
-             height: 0.5rem;
+             width: 0.65rem; 
+             height: 0.65rem;
              margin-right: 0.15rem;
         }
         
@@ -136,7 +135,7 @@
         /* D3 Chart Text Styling */
         #rainfall-chart-container text {
             font-family: 'Inter', sans-serif;
-            font-size: 9px; /* ลดขนาดตัวอักษรในกราฟลงอีก */
+            font-size: 9px; 
         }
 
         /* For mobile/small screen: Use 1 column layout */
@@ -237,12 +236,12 @@
             const result = [];
 
             for (let i = 1; i < lines.length; i++) {
-                const obj = {};
                 const currentLine = lines[i];
                 
                 const values = currentLine.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/"/g, ''));
                 
                 if (values.length === cleanHeaders.length) {
+                    const obj = {};
                     let hasRequiredKey = false;
                     for (let j = 0; j < cleanHeaders.length; j++) {
                         obj[cleanHeaders[j]] = values[j]; 
@@ -255,7 +254,7 @@
                          result.push(obj);
                     }
                 } else {
-                    console.warn(`[Parsing Error] Skipping data line ${i+1}: Column count mismatch (${values.length} found, ${cleanHeaders.length} expected).`);
+                    // console.warn(`[Parsing Error] Skipping data line ${i+1}: Column count mismatch (${values.length} found, ${cleanHeaders.length} expected).`);
                 }
             }
             return result;
@@ -338,11 +337,10 @@
             if (pointName.includes('เขื่อนเจ้าพระยา')) { unit = 'ลบ.ม./วินาที'; } 
             if (displayLevel === 'N/A') { unit = ''; }
 
-            // กำหนด CSS Class ใหม่ที่ถูกปรับให้ FIT กับกรอบ
+            // กำหนด CSS Class ใหม่ที่ถูกปรับให้ FIT และ CONSISTENT กับกรอบ
             const tdClass = isSheet1 ? 'table-td-area1' : 'table-td-area2';
             const levelTextClass = isSheet1 ? 'text-lg-area1 font-bold' : 'text-base-area2 font-semibold';
-            const diffTextClass = isSheet1 ? 'text-xs' : 'text-[10px]'; // ใช้ text size ที่เล็กลงมาก
-            const iconSize = isSheet1 ? 'icon-area1' : 'icon-area2'; // ใช้ custom icon classes
+            const iconSize = isSheet1 ? 'icon-area1' : 'icon-area2'; 
 
             return `
                 <tr class="border-b hover:bg-gray-50 transition duration-150">
@@ -352,7 +350,7 @@
                     <td class="${tdClass} whitespace-nowrap ${levelTextClass} text-gray-900">
                         ${displayLevel} ${unit}
                     </td>
-                    <td class="${tdClass} whitespace-nowrap ${diffTextClass} text-gray-600">
+                    <td class="${tdClass} whitespace-nowrap text-xs text-gray-600">
                         <div class="flex items-center space-x-1">
                             <span class="font-semibold ${diffIcon.iconColor}">
                                 ${diffValue}
@@ -400,7 +398,7 @@
             const safeStationName = pumpStation.replace(/'/g, "\\'");
             const safeInspectionCount = inspectionCount.replace(/'/g, "\\'");
             
-            // ปรับขนาดการ์ดและตัวอักษรให้เล็กลง เพื่ออัด Card ให้เต็มพื้นที่ Green Area (7/12 Width)
+            // ปรับขนาดการ์ดและตัวอักษรให้เล็กลง เพื่ออัด Card ให้เต็มพื้นที่ Green Area (8/12 Width - NEW)
             return `
                 <div 
                     class="p-2.5 ${bgColor} rounded-lg shadow-sm ring-1 ring-inset ring-opacity-50 flex items-start space-x-1 transition duration-200 hover:ring-2 hover:ring-offset-2 hover:ring-opacity-100 cursor-pointer w-full"
@@ -497,7 +495,7 @@
             }
             
             // กำหนดขนาดและขอบเขต
-            const margin = { top: 20, right: 10, bottom: 60, left: 40 }; // ลด Margin ให้ Chart ใหญ่ขึ้น
+            const margin = { top: 20, right: 10, bottom: 60, left: 40 }; 
             
             // ใช้ขนาดของ Container ปัจจุบัน
             const containerWidth = container.clientWidth;
@@ -533,12 +531,12 @@
                 .selectAll("text")
                 .attr("transform", "translate(-10,0)rotate(-45)") 
                 .style("text-anchor", "end")
-                .style("font-size", "9px"); // ลดขนาดตัวอักษร
+                .style("font-size", "9px"); 
 
             // Y-Axis
             svg.append("g")
                 .call(d3.axisLeft(y).ticks(5))
-                .style("font-size", "9px"); // ลดขนาดตัวอักษร
+                .style("font-size", "9px"); 
 
             // Y-Axis Label
             svg.append("text")
@@ -851,7 +849,7 @@
             </div>
         </div>
         
-        <!-- 3. Area 3 (Sheet URL 4: ปริมาณและระยะเวลาฝนตก - GRAPH ONLY) - Blue Area (5/12 width, 1/2 height) -->
+        <!-- 3. Area 3 (Sheet URL 4: ปริมาณและระยะเวลาฝนตก - GRAPH ONLY) - Blue Area (NEW: 4/12 width, 1/2 height) -->
         <div class="area-3-blue bg-white p-6 rounded-xl shadow-lg flex flex-col overflow-hidden">
             <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center flex-shrink-0">
                 <i data-lucide="CloudRain" class="w-5 h-5 mr-2 text-blue-600"></i>
@@ -864,7 +862,7 @@
         </div>
 
 
-        <!-- 4. Area 4 (Sheet URL 3: สถานะเครื่องสูบน้ำ - CARDS) - Green Area (7/12 width, 1/2 height) -->
+        <!-- 4. Area 4 (Sheet URL 3: สถานะเครื่องสูบน้ำ - CARDS) - Green Area (NEW: 8/12 width, 1/2 height) -->
         <div class="area-4-green bg-white p-6 rounded-xl shadow-lg flex flex-col overflow-hidden">
             <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center flex-shrink-0">
                 <i data-lucide="Box" class="w-5 h-5 mr-2 text-green-600"></i>
