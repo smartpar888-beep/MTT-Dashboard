@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- 1. เปลี่ยนชื่อ Dashboard เป็น "การบริหารจัดการน้ำเมืองทองธานี" -->
     <title>การบริหารจัดการน้ำเมืองทองธานี</title>
     
     <!-- Google Font KANIT -->
@@ -25,7 +24,6 @@
             height: 100%; 
             margin: 0;
             padding: 0;
-            overflow: hidden; 
         }
         
         .full-screen-container {
@@ -36,26 +34,48 @@
         }
 
         /* -------------------------------------------------------- */
-        /* Custom Grid: Main Layout (ใช้พื้นที่เต็มจอ) */
+        /* Custom Grid: Main Layout - Responsive Logic is HERE */
         /* -------------------------------------------------------- */
         .custom-dashboard-grid {
             height: 100%; 
             display: grid;
-            /* สัดส่วนความสูงตามที่ผู้ใช้ต้องการ: 1.5fr (บน) / 1fr (ล่าง) */
-            grid-template-rows: 1.5fr 1fr; 
-            grid-template-columns: repeat(12, 1fr); 
+            /* Default: Mobile/Small screen (Vertical) - Column layout */
+            grid-template-rows: auto; 
+            grid-template-columns: 1fr; 
             gap: 1.5rem;
-            overflow: hidden; 
+            overflow-y: auto; /* Allow scrolling on small screens */
+            padding-bottom: 1rem; /* Add padding for bottom margin */
         }
 
-        /* Grid Areas Mapping (No Change) */
-        .area-1-orange { grid-column: span 8; grid-row: 1; }
-        .area-2-yellow { grid-column: span 4; grid-row: 1; }
-        .area-3-blue { grid-column: span 4; grid-row: 2; }
-        .area-4-green { grid-column: span 8; grid-row: 2; }
-        
+        /* Desktop/Large Screen (Horizontal) - Use the 4-Area Grid */
+        @media (min-width: 1024px) { /* Adjust breakpoint if needed (lg: or xl:) */
+            .custom-dashboard-grid {
+                grid-template-rows: 1.5fr 1fr; /* 60/40 height split */
+                grid-template-columns: repeat(12, 1fr); 
+                overflow-y: hidden; /* No scrolling on large screens */
+            }
+            .area-1-orange { grid-column: span 8; grid-row: 1; height: 100%; }
+            .area-2-yellow { grid-column: span 4; grid-row: 1; height: 100%; }
+            .area-3-blue { grid-column: span 4; grid-row: 2; height: 100%; }
+            .area-4-green { grid-column: span 8; grid-row: 2; height: 100%; }
+        }
+
+        /* For screens between mobile and large desktop (Tablet/md:) */
+        @media (min-width: 768px) and (max-width: 1023px) { 
+            .custom-dashboard-grid {
+                /* Tablet View: Stack horizontally but allow scrolling */
+                grid-template-rows: auto auto auto auto; 
+                grid-template-columns: repeat(12, 1fr);
+                overflow-y: auto;
+            }
+            .area-1-orange { grid-column: span 12; grid-row: 1; min-height: 400px; }
+            .area-2-yellow { grid-column: span 12; grid-row: 2; min-height: 300px; }
+            .area-3-blue { grid-column: span 12; grid-row: 3; min-height: 350px; } 
+            .area-4-green { grid-column: span 12; grid-row: 4; min-height: 300px; }
+        }
+
         /* -------------------------------------------------------- */
-        /* Table Layout (Sheet 1 & 2) */
+        /* Table Layout (Sheet 1 & 2) - Font and Padding */
         /* -------------------------------------------------------- */
         .fluid-table {
             table-layout: fixed; 
@@ -63,52 +83,44 @@
             border-collapse: collapse;
         }
         
-        /* Area 1: Table (8/12 Width - เยอะ) */
+        /* Area 1: Table (8/12 Width - เยอะ) - Remove explicit font-size */
         .table-td-area1, .table-th-area1 {
             padding: 0.35em 0.6em; 
-            font-size: 0.8em; 
         }
 
-        /* Area 2: Table (4/12 Width - น้อย) */
+        /* Area 2: Table (4/12 Width - น้อย) - Remove explicit font-size */
         .table-td-area2, .table-th-area2 { 
-            padding: 0.15em 0.3em;
-            font-size: 0.8em; 
+            padding: 0.25em 0.4em; 
         }
         
-        /* Bounding TH/TD Widths for fluid-table */
-        .fluid-table thead th:nth-child(1), .fluid-table tbody td:nth-child(1) { width: 40%; } /* จุดวัด - กว้างสุด */
-        .fluid-table thead th:nth-child(2), .fluid-table tbody td:nth-child(2) { width: 25%; } /* ระดับน้ำปัจจุบัน - กลาง */
-        .fluid-table thead th:nth-child(3), .fluid-table tbody td:nth-child(3) { width: 20%; } /* ส่วนต่าง - แคบ */
-        .fluid-table thead th:nth-child(4), .fluid-table tbody td:nth-child(4) { width: 15%; } /* แจ้งเตือน - แคบสุด */
+        /* Bounding TH/TD Widths for fluid-table (Only apply on medium screens up) */
+        @media (min-width: 768px) {
+            .fluid-table thead th:nth-child(1), .fluid-table tbody td:nth-child(1) { width: 40%; } 
+            .fluid-table thead th:nth-child(2), .fluid-table tbody td:nth-child(2) { width: 25%; } 
+            .fluid-table thead th:nth-child(3), .fluid-table tbody td:nth-child(3) { width: 20%; } 
+            .fluid-table thead th:nth-child(4), .fluid-table tbody td:nth-child(4) { width: 15%; } 
+        }
 
+        /* Status Badge: Standardizing badge text size */
         .status-badge {
-            padding: 0.35rem 0.5rem; /* ปรับขนาด Padding ให้ใหญ่ขึ้นเล็กน้อย */
-            font-size: 0.85em; /* ปรับ Font size ให้ใหญ่ขึ้นเล็กน้อย */
-            font-weight: 600; /* ทำให้ตัวอักษรเข้มขึ้น */
+            padding: 0.35rem 0.5rem; 
+            font-size: 0.75rem; 
+            font-weight: 600; 
             letter-spacing: 0.025em;
+            white-space: nowrap; 
         }
         
         /* D3 Chart Text Styling - ให้เล็กลง */
-        #rainfall-chart-container text {
+        #rainfall-chart-d3-container text {
             font-family: 'Kanit', sans-serif;
-            font-size: 0.65rem; 
+            font-size: 0.6rem; /* Smallest font for chart labels */
         }
         
-        /* Mobile Fallback */
-        @media (max-width: 768px) {
-            .custom-dashboard-grid {
-                display: flex;
-                flex-direction: column;
-                height: auto; 
-                overflow-y: auto;
-            }
-            .area-1-orange, .area-2-yellow, .area-3-blue, .area-4-green {
-                width: 100%;
-                grid-column: span 12;
-                grid-row: auto;
-                min-height: 400px;
-            }
+        /* Ensure that the chart container grows vertically */
+        #rainfall-chart-d3-container {
+            min-height: 200px;
         }
+
     </style>
 </head>
 <body class="bg-gray-50 full-screen-container">
@@ -135,7 +147,7 @@
             GOOGLE_SHEET_URL_4.includes('{SHEET_ID_4}');
 
         // =================================================================================================================================================
-        // ส่วนที่ 2: การกำหนดค่าชื่อคอลัมน์ (USER CONFIGURATION) และ KEY MAP (เหมือนเดิม)
+        // ส่วนที่ 2: การกำหนดค่าชื่อคอลัมน์และ KEY MAP (เหมือนเดิม)
         // =================================================================================================================================================
         
         const USER_COLUMN_NAMES = {
@@ -235,10 +247,6 @@
         // ส่วนที่ 3: ฟังก์ชันการแสดงผล (Rendering)
         // =================================================================================================================================================
         
-        /**
-         * 7. แก้ไข Alert Styling: ทำให้ 'ปกติ' 'วิกฤติ' และ 'เฝ้าระวัง' ใช้ Light Style (พื้นหลังสีอ่อน/ตัวอักษรสีเข้ม) เหมือนกันทั้งหมด
-         * และเอา Icon ออกจากตารางตามที่ผู้ใช้แจ้ง (Icon จะยังอยู่ใน Title และ Card)
-         */
         function getAlertStyles(alertLevel) {
             const sanitizedLevel = sanitizeText(alertLevel);
             
@@ -255,7 +263,7 @@
             // 2. เฝ้าระวัง (สีเหลืองอ่อน/ส้มเข้ม, ไอคอน Eye, ข้อความ "เฝ้าระวัง")
             if (sanitizedLevel.includes('เฝ้าระวัง') || sanitizedLevel.includes('สูง') || sanitizedLevel.includes('แจ้งเตือน')) {
                 return { 
-                    // Light Style: bg-amber-100 text-amber-800 (นี่คือสไตล์ที่ต้องการให้ทุกอันใช้)
+                    // Light Style: bg-amber-100 text-amber-800 
                     color: 'bg-amber-100 text-amber-800 ring-amber-300', 
                     icon: 'Eye', 
                     displayText: 'เฝ้าระวัง' 
@@ -311,18 +319,24 @@
 
             const tdClass = isSheet1 ? 'table-td-area1' : 'table-td-area2';
             
-            const pointNameClass = (!isSheet1) ? 'text-[1.1em] font-semibold' : 'font-medium'; 
-
+            // *** NEW: Unified Font Sizing ***
+            // ใช้ขนาด Font ที่ใหญ่ขึ้นและสม่ำเสมอในทั้งสองตารางตามความต้องการของผู้ใช้
+            const BASE_FONT_CLASS = 'text-base md:text-lg'; // จุดวัด & ระดับน้ำ (1rem / 1.125rem)
+            const SMALLER_FONT_CLASS = 'text-sm md:text-base'; // ส่วนต่าง (0.875rem / 1rem)
+            
             return `
                 <tr class="border-b hover:bg-gray-50 transition duration-150">
-                    <td class="${tdClass} whitespace-normal text-gray-900 ${pointNameClass}">
+                    <!-- จุดวัด: ใช้ BASE_FONT_CLASS สำหรับทั้ง Sheet 1 และ Sheet 2 -->
+                    <td class="${tdClass} whitespace-normal text-gray-900 font-semibold ${BASE_FONT_CLASS}">
                         ${data[KEY_MAP.WATER_POINT] || 'N/A'} 
                     </td>
-                    <td class="${tdClass} whitespace-nowrap font-bold text-gray-900 text-[1.1em]">
+                    <!-- ระดับน้ำปัจจุบัน: ใช้ BASE_FONT_CLASS -->
+                    <td class="${tdClass} whitespace-nowrap font-bold text-gray-900 ${BASE_FONT_CLASS}">
                         ${displayLevel} 
-                        <span class="text-[0.6em] font-normal opacity-80">${unit}</span>
+                        <span class="text-xs font-normal opacity-80">${unit}</span>
                     </td>
-                    <td class="${tdClass} whitespace-nowrap text-[0.9em] text-gray-600">
+                    <!-- ส่วนต่าง: ใช้ SMALLER_FONT_CLASS เพื่อให้ดูเป็นข้อมูลรองลงมา -->
+                    <td class="${tdClass} whitespace-nowrap ${SMALLER_FONT_CLASS} text-gray-600">
                         <div class="flex items-center space-x-1 justify-center">
                             <span class="font-semibold ${diffIcon.iconColor} whitespace-nowrap">
                                 ${diffValue}
@@ -330,7 +344,7 @@
                             <i data-lucide="${diffIcon.icon}" class="w-[0.8em] h-[0.8em] ${diffIcon.iconColor}"></i>
                         </div>
                     </td>
-                    <!-- 7. ไอคอนถูกเอาออกจาก Cell แจ้งเตือนตามที่ผู้ใช้แจ้ง -->
+                    <!-- แจ้งเตือน: ใช้ tdClass และปล่อยให้ status-badge กำหนดขนาด -->
                     <td class="${tdClass} whitespace-nowrap text-center">
                         <div class="flex justify-center items-center w-full h-full"> 
                             <span class="status-badge ${alertStyles.color} ring-1 ring-inset inline-flex items-center justify-center">
@@ -355,7 +369,7 @@
             let textColor = 'text-gray-800';
             let icon = 'Info';
 
-            // ใช้สไตล์สีให้สอดคล้องกับโทน 'Light Style' (ตามที่ผู้ใช้ต้องการ)
+            // ใช้สไตล์สีให้สอดคล้องกับโทน 'Light Style' 
             if (sanitizedStatus.includes('ปกติ') || sanitizedStatus.includes('ทำงาน')) {
                 bgColor = 'bg-green-100';
                 textColor = 'text-green-800';
@@ -382,7 +396,7 @@
                 <div 
                     class="p-2 ${bgColor} rounded-lg shadow-sm ring-1 ring-inset ring-opacity-50 
                            flex flex-col items-center justify-center text-center 
-                           transition duration-200 hover:ring-2 hover:ring-offset-2 hover:ring-opacity-100 cursor-pointer w-full h-full"
+                           transition duration-200 hover:ring-2 hover:ring-offset-2 hover:ring-opacity-100 cursor-pointer w-full h-full min-h-[80px]"
                     onclick="showInspectionModal('${safeStationName}', '${safeInspectionCount}')"
                 >
                     <i data-lucide="${icon}" class="w-5 h-5 mb-1 ${textColor} flex-shrink-0"></i> 
@@ -445,13 +459,13 @@
         
         // เก็บข้อมูล Rainfall ล่าสุดไว้เพื่อให้สามารถวาดใหม่ได้
         let latestRainfallData = [];
-        let latestRainfallDuration = 'N/A'; // 5. เก็บข้อมูลระยะเวลาฝนตก
+        let latestRainfallDuration = 'N/A'; 
 
         /**
          * วาดกราฟแท่งปริมาณน้ำฝนโดยใช้ D3.js (Sheet 4) 
          */
         function drawRainfallBarChart(data) {
-            const containerId = '#rainfall-chart-d3-container'; // เปลี่ยน ID สำหรับ D3 Chart
+            const containerId = '#rainfall-chart-d3-container'; 
             const container = document.querySelector(containerId);
             
             // ล้าง SVG เก่า
@@ -568,7 +582,7 @@
         }
 
         /**
-         * 5. ฟังก์ชันสำหรับวาด Card ระยะเวลาฝนตก (Panel)
+         * ฟังก์ชันสำหรับวาด Card ระยะเวลาฝนตก (Panel)
          */
         function renderDurationPanel(duration) {
             const container = document.getElementById('rainfall-duration-panel');
@@ -588,9 +602,13 @@
         
         // ฟังก์ชันวาดกราฟใหม่เมื่อมีการ Resize
         function handleResize() {
-            if (latestRainfallData.length > 0) {
-                 drawRainfallBarChart(latestRainfallData);
-            }
+            // Delay the chart redraw to ensure the container size is stable
+            clearTimeout(window.resizeTimer);
+            window.resizeTimer = setTimeout(() => {
+                if (latestRainfallData.length > 0) {
+                    drawRainfallBarChart(latestRainfallData);
+                }
+            }, 250); // 250ms delay
         }
         
         window.addEventListener('resize', handleResize);
@@ -728,7 +746,7 @@
                 latestRainfallDuration = chartData.length > 0 ? chartData[0].duration : 'N/A';
                 
                 drawRainfallBarChart(rainfallData);
-                renderDurationPanel(latestRainfallDuration); // 5. แสดง Card ระยะเวลาฝนตก
+                renderDurationPanel(latestRainfallDuration); // แสดง Card ระยะเวลาฝนตก
                 
                 // อัปเดตเวลาล่าสุด
                 const now = new Date();
@@ -778,7 +796,6 @@
     <header class="mb-6 flex-shrink-0"> 
         <div class="flex items-center justify-between flex-wrap gap-4">
             <div>
-                <!-- 1. เปลี่ยนชื่อ Dashboard -->
                 <h1 class="text-3xl font-extrabold text-gray-800">
                     การบริหารจัดการน้ำเมืองทองธานี
                 </h1>
@@ -800,12 +817,11 @@
         </div>
     </header>
     
-    <!-- Main Content Container: ใช้พื้นที่ความสูงที่เหลือทั้งหมด -->
-    <main class="custom-dashboard-grid md:h-[calc(100vh-100px)]"> 
+    <!-- Main Content Container: ใช้คลาส responsive grid ใหม่ -->
+    <main class="custom-dashboard-grid lg:h-[calc(100vh-100px)]"> 
             
-        <!-- 1. Area 1 (Sheet URL 1) - Orange Area (8/12 width, ~60% height) -->
+        <!-- 1. Area 1: ข้อมูลระดับน้ำเมืองทองธานี -->
         <div class="area-1-orange bg-white p-6 rounded-xl shadow-lg flex flex-col overflow-hidden">
-            <!-- 2. เปลี่ยนชื่อหัวข้อเป็น "ข้อมูลระดับน้ำเมืองทองธานี" -->
             <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center flex-shrink-0">
                 <i data-lucide="Gauge" class="w-5 h-5 mr-2 text-orange-600"></i>
                 ข้อมูลระดับน้ำเมืองทองธานี
@@ -835,9 +851,8 @@
             </div>
         </div>
 
-        <!-- 2. Area 2 (Sheet URL 2) - Yellow Area (4/12 width, ~60% height) -->
+        <!-- 2. Area 2: ข้อมูลระดับน้ำแม่น้ำเจ้าพระยา -->
         <div class="area-2-yellow bg-white p-4 rounded-xl shadow-lg flex flex-col overflow-hidden">
-            <!-- 3. เปลี่ยนชื่อหัวข้อเป็น "ข้อมูลระดับน้ำแม่น้ำเจ้าพระยา" -->
             <h2 class="text-lg font-bold text-gray-800 mb-3 flex items-center flex-shrink-0">
                 <i data-lucide="Waves" class="w-4 h-4 mr-1 text-yellow-600"></i>
                 ข้อมูลระดับน้ำแม่น้ำเจ้าพระยา
@@ -867,37 +882,41 @@
             </div>
         </div>
         
-        <!-- 3. Area 3 (Sheet URL 4: กราฟปริมาณน้ำฝน) - Blue Area (4/12 width, ~40% height) -->
+        <!-- 3. Area 3: ปริมาณน้ำฝน (กราฟและ Card) -->
         <div class="area-3-blue bg-white p-6 rounded-xl shadow-lg flex flex-col overflow-hidden">
-            <!-- 4. เปลี่ยนชื่อหัวข้อเป็น "ปริมาณน้ำฝน (มม.) และระยะเวลาที่ฝนตก" -->
             <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center flex-shrink-0">
                 <i data-lucide="CloudRain" class="w-5 h-5 mr-2 text-blue-600"></i>
                 ปริมาณน้ำฝน (มม.) และระยะเวลาที่ฝนตก
             </h2>
             
-            <!-- 5. ปรับ Layout ภายใน Area 3 เพื่อวาง Chart และ Card ระยะเวลาฝนตกเคียงข้างกัน -->
+            <!-- Responsive Grid for Rainfall: 
+                 - บน PC: 8/12 (Chart) และ 4/12 (Card)
+                 - บนมือถือ: 12/12 (Card) และ 12/12 (Chart) เรียงซ้อนกัน -->
             <div class="grid grid-cols-12 gap-4 flex-grow min-h-[50px]">
-                <!-- Chart Container (ใช้พื้นที่ 8/12) -->
-                <div id="rainfall-chart-d3-container" class="col-span-12 md:col-span-8 w-full h-full min-h-[150px]"> 
-                    <!-- Chart will be drawn here -->
-                </div>
-                <!-- Duration Card (ใช้พื้นที่ 4/12) -->
-                <div id="rainfall-duration-panel" class="col-span-12 md:col-span-4 w-full h-full min-h-[100px]">
+                
+                <!-- Duration Card (col-span-12 on mobile, col-span-4 on large screens) -->
+                <div id="rainfall-duration-panel" class="col-span-12 lg:col-span-4 w-full h-full min-h-[100px] order-1 lg:order-2">
                     <!-- Duration Card will be rendered here by JS -->
                 </div>
+                
+                <!-- Chart Container (col-span-12 on mobile, col-span-8 on large screens) -->
+                <div id="rainfall-chart-d3-container" class="col-span-12 lg:col-span-8 w-full h-full min-h-[250px] order-2 lg:order-1"> 
+                    <!-- Chart will be drawn here -->
+                </div>
+                
             </div>
         </div>
 
 
-        <!-- 4. Area 4 (Sheet URL 3: สถานะเครื่องสูบน้ำ - CARDS) - Green Area (8/12 width, ~40% height) -->
+        <!-- 4. Area 4: สถานะเครื่องสูบน้ำ (CARDS) -->
         <div class="area-4-green bg-white p-6 rounded-xl shadow-lg flex flex-col overflow-hidden">
-            <!-- 6. เปลี่ยนชื่อหัวข้อเป็น "สถานะเครื่องสูบน้ำ" -->
             <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center flex-shrink-0">
                 <i data-lucide="Box" class="w-5 h-5 mr-2 text-green-600"></i>
                 สถานะเครื่องสูบน้ำ
             </h2>
+            <!-- ปรับ minmax ให้เล็กลงสำหรับมือถือเพื่อให้มีพื้นที่ว่างมากขึ้น -->
             <div id="pump-status-card-container" class="grid gap-2 overflow-y-auto flex-grow" 
-                style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));">
+                style="grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));">
                 <!-- Cards will be injected by JavaScript -->
             </div>
         </div>
@@ -912,9 +931,8 @@
         </p>
     </footer>
 
-    <!-- Modal Structure for Pump Inspection Count -->
+    <!-- Modal Structure for Pump Inspection Count (No change) -->
     <div id="inspection-modal" class="hidden fixed inset-0 z-50 bg-gray-900 bg-opacity-75 flex items-center justify-center transition-opacity duration-300">
-        <!-- Modal Content (No change) -->
         <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 m-4 transform transition-all sm:my-8 sm:align-middle">
             <div class="flex justify-between items-start mb-4 border-b pb-3">
                 <h3 class="text-xl font-bold text-gray-800 flex items-center">
