@@ -75,18 +75,31 @@
             grid-row: 2;
         }
         
-        /* Style adjustments to fit content tightly */
-        .status-badge {
-            padding: 0.2rem 0.5rem; 
+        /* Style adjustments to fit content tightly (NEW) */
+        
+        /* สำหรับตาราง Area 1 (ใหญ่) - ลด Padding และ Font Size เล็กน้อย */
+        .table-td-area1 { 
+            padding: 0.5rem 0.75rem; /* p-2/p-3 */
+            font-size: 0.875rem; /* text-sm */
+        }
+        .text-lg-area1 { /* สำหรับค่าระดับน้ำใน Area 1 */
+            font-size: 1.125rem; /* text-lg */
+        }
+
+        /* สำหรับตาราง Area 2 (เล็ก) - ลด Padding และ Font Size ให้เล็กมาก */
+        .table-td-area2 { 
+            padding: 0.25rem 0.4rem; /* p-1/p-1.5 */
             font-size: 0.75rem; /* text-xs */
         }
-        .table-td-lg {
-             padding: 0.75rem 1rem; /* p-3 p-4 */
-             font-size: 1rem; /* text-base */
+        .text-base-area2 { /* สำหรับค่าระดับน้ำใน Area 2 */
+            font-size: 0.875rem; /* text-sm */
         }
-        .table-td-sm {
-             padding: 0.4rem 0.5rem; /* p-1 p-2 */
-             font-size: 0.875rem; /* text-sm */
+        
+        /* ปรับขนาด Status Badge ให้เล็กลงมากเพื่อให้พอดีแถว */
+        .status-badge {
+            padding: 0.1rem 0.4rem; 
+            font-size: 0.625rem; /* text-[10px] */
+            white-space: nowrap; /* ป้องกันการขึ้นบรรทัดใหม่ */
         }
         
         /* D3 Chart Text Styling */
@@ -280,7 +293,7 @@
 
         /**
          * สร้างแถวตารางสำหรับข้อมูลระดับน้ำ (Sheet 1 & 2)
-         * ใช้ CSS Class เพื่อควบคุมขนาดตัวอักษรและ Padding ให้เหมาะกับพื้นที่
+         * ใช้ CSS Class ใหม่ที่ถูกปรับให้ FIT กับกรอบ (table-td-area1, table-td-area2)
          */
         function createWaterTableRow(data, isSheet1) {
             const alertLevel = data[KEY_MAP.ALERT_LEVEL] || 'N/A';
@@ -295,11 +308,11 @@
             if (pointName.includes('เขื่อนเจ้าพระยา')) { unit = 'ลบ.ม./วินาที'; } 
             if (displayLevel === 'N/A') { unit = ''; }
 
-            // กำหนด CSS Class ตาม Sheet (เพื่อจัดสัดส่วน)
-            const tdClass = isSheet1 ? 'table-td-lg' : 'table-td-sm';
-            const levelTextClass = isSheet1 ? 'text-lg font-bold' : 'text-base font-semibold';
-            const diffTextClass = isSheet1 ? 'text-base' : 'text-sm';
-            const iconSize = isSheet1 ? 'w-5 h-5' : 'w-4 h-4';
+            // กำหนด CSS Class ใหม่เพื่อบังคับขนาดให้พอดี
+            const tdClass = isSheet1 ? 'table-td-area1' : 'table-td-area2';
+            const levelTextClass = isSheet1 ? 'text-lg-area1 font-bold' : 'text-base-area2 font-semibold';
+            const diffTextClass = isSheet1 ? 'text-sm' : 'text-xs';
+            const iconSize = isSheet1 ? 'w-4 h-4' : 'w-3 h-3'; // Shrink icons slightly
 
             return `
                 <tr class="border-b hover:bg-gray-50 transition duration-150">
@@ -319,7 +332,7 @@
                     </td>
                     <td class="${tdClass} whitespace-nowrap">
                         <span class="status-badge ${alertStyles.color} ring-1 ring-inset">
-                             <i data-lucide="${alertStyles.icon}" class="w-3 h-3 mr-1"></i>
+                             <i data-lucide="${alertStyles.icon}" class="w-2.5 h-2.5 mr-1"></i>
                             ${alertLevel}
                         </span>
                     </td>
@@ -750,22 +763,21 @@
                 <i data-lucide="Gauge" class="w-5 h-5 mr-2 text-orange-600"></i>
                 สถานะการตรวจวัดระดับน้ำ (4 จุด - 4 รอบ/วัน)
             </h2>
-            <!-- Scrollable Table Container -->
-            <!-- flex-grow ทำให้ตารางใช้พื้นที่ความสูงที่เหลือของ Card -->
-            <div class="overflow-y-auto flex-grow -mx-6 px-6"> 
+            <!-- ลบ overflow-y-auto เพื่อบังคับให้ Fit -->
+            <div class="flex-grow -mx-6 px-6 overflow-hidden"> 
                 <table class="table-auto divide-y divide-gray-200 w-full"> 
                     <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
                         <tr>
-                            <th class="table-td-lg text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                            <th class="table-td-area1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                 จุดวัด
                             </th>
-                            <th class="table-td-lg text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                            <th class="table-td-area1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                 ระดับน้ำปัจจุบัน
                             </th>
-                            <th class="table-td-lg text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                            <th class="table-td-area1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                 ส่วนต่าง (เทียบครั้งก่อน)
                             </th>
-                            <th class="table-td-lg text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                            <th class="table-td-area1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                 ระดับการแจ้งเตือน
                             </th>
                         </tr>
@@ -783,21 +795,21 @@
                 <i data-lucide="Waves" class="w-4 h-4 mr-1 text-yellow-600"></i>
                 ข้อมูลระดับน้ำเจ้าพระยา (4 จุด - 3 รอบ/วัน)
             </h2>
-            <!-- Scrollable Table Container -->
-            <div class="overflow-y-auto flex-grow -mx-4 px-4">
+            <!-- ลบ overflow-y-auto เพื่อบังคับให้ Fit -->
+            <div class="flex-grow -mx-4 px-4 overflow-hidden">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
                         <tr>
-                            <th class="table-td-sm text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                            <th class="table-td-area2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                 จุดวัด
                             </th>
-                            <th class="table-td-sm text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                            <th class="table-td-area2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                 ระดับน้ำ
                             </th>
-                            <th class="table-td-sm text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                            <th class="table-td-area2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                 ส่วนต่าง
                             </th>
-                            <th class="table-td-sm text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                            <th class="table-td-area2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                 แจ้งเตือน
                             </th>
                         </tr>
