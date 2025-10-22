@@ -51,7 +51,7 @@
         .area-4-green { grid-column: span 8; grid-row: 2; }
         
         /* -------------------------------------------------------- */
-        /* **ปรับปรุง** Table Layout ให้ยืดหยุ่น (Sheet 1 & 2) */
+        /* Table Layout (Sheet 1 & 2) */
         /* -------------------------------------------------------- */
         .fluid-table {
             table-layout: fixed; /* บังคับให้คอลัมน์ใช้ความกว้างตามที่กำหนด */
@@ -80,12 +80,6 @@
         .status-badge {
             padding: 0.05rem 0.3rem; 
             font-size: 0.7em; /* เล็กลง */
-            /* Removed white-space: nowrap to allow wrapping if needed, but not necessary here */
-        }
-        .status-badge i { 
-             width: 0.7em; 
-             height: 0.7em;
-             margin-right: 0.15rem;
         }
         
         /* D3 Chart Text Styling - ให้เล็กลง */
@@ -236,7 +230,7 @@
         // =================================================================================================================================================
         
         /**
-         * **[ปรับปรุง]** ฟังก์ชันสำหรับกำหนด Style, Icon, และข้อความแสดงผลของการแจ้งเตือน (Sheet 1 & 2)
+         * ฟังก์ชันสำหรับกำหนด Style, Icon, และข้อความแสดงผลของการแจ้งเตือน (Sheet 1 & 2)
          */
         function getAlertStyles(alertLevel) {
             const sanitizedLevel = sanitizeText(alertLevel);
@@ -244,17 +238,19 @@
             // 1. วิกฤติ (สีแดงเข้ม, ไอคอน BellRing, ข้อความ "วิกฤติ")
             if (sanitizedLevel.includes('วิกฤติ') || sanitizedLevel.includes('อันตราย') || sanitizedLevel.includes('ผิดปกติ')) {
                 return { 
+                    // ใช้ text-white เพื่อให้ Icon แสดงผลบนพื้นหลังสีเข้ม
                     color: 'bg-red-600 text-white ring-red-700', 
                     icon: 'BellRing', 
                     displayText: 'วิกฤติ' 
                 };
             }
             
-            // 2. เฝ้าระวัง (สีเหลือง, ไอคอน Eye, ข้อความ "เฝ้าระวัง")
+            // 2. เฝ้าระวัง (สีเหลือง, ไอคอน Eye, ข้อความ "เฝ้าระวัง") **รูปแบบที่ท่านชื่นชอบ**
             if (sanitizedLevel.includes('เฝ้าระวัง') || sanitizedLevel.includes('สูง') || sanitizedLevel.includes('แจ้งเตือน')) {
                 return { 
+                    // ใช้ text-amber-800 เพื่อให้ Icon แสดงผลบนพื้นหลังสีอ่อน
                     color: 'bg-amber-100 text-amber-800 ring-amber-300', 
-                    icon: 'Eye',
+                    icon: 'Eye', 
                     displayText: 'เฝ้าระวัง' 
                 };
             }
@@ -262,8 +258,9 @@
             // 3. ปกติ (สีเขียว, ไอคอน CheckCircle, ข้อความ "ปกติ")
             if (sanitizedLevel.includes('ปกติ') || sanitizedLevel.includes('ทำงาน')) {
                 return { 
+                    // ใช้ text-white เพื่อให้ Icon แสดงผลบนพื้นหลังสีเข้ม
                     color: 'bg-green-600 text-white ring-green-700', 
-                    icon: 'CheckCircle',
+                    icon: 'CheckCircle', 
                     displayText: 'ปกติ' 
                 };
             }
@@ -307,8 +304,7 @@
 
             const tdClass = isSheet1 ? 'table-td-area1' : 'table-td-area2';
             
-            // **[CHANGE 2: Font size สำหรับ Sheet 2 "จุดวัด" column]**
-            // ใช้คลาสที่กำหนดให้ตัวอักษรใหญ่ขึ้นสำหรับ Sheet 2
+            // Font size สำหรับ Sheet 2 "จุดวัด" column
             const pointNameClass = (!isSheet1) ? 'text-[1.1em] font-semibold' : 'font-medium'; 
 
             return `
@@ -328,13 +324,14 @@
                             <i data-lucide="${diffIcon.icon}" class="w-[0.8em] h-[0.8em] ${diffIcon.iconColor}"></i>
                         </div>
                     </td>
+                    <!-- ตรวจสอบให้ Icon ได้รับสี text-white/text-amber-800 จาก Parent Badge -->
                     <td class="${tdClass} whitespace-nowrap text-center">
-                        <!-- **[CHANGE 3: New Alert Badge Styles (Centered, new text/icon)]** -->
-                        <!-- ใช้ justify-center เพื่อจัดข้อความไว้ตรงกลาง -->
-                        <span class="status-badge ${alertStyles.color} ring-1 ring-inset inline-flex items-center justify-center mx-auto">
-                             <i data-lucide="${alertStyles.icon}" class="status-badge i"></i>
-                            ${alertStyles.displayText}
-                        </span>
+                        <div class="flex justify-center items-center w-full h-full"> 
+                            <span class="status-badge ${alertStyles.color} ring-1 ring-inset inline-flex items-center space-x-1 justify-center">
+                                <i data-lucide="${alertStyles.icon}" class="w-[0.7em] h-[0.7em]"></i>
+                                ${alertStyles.displayText}
+                            </span>
+                        </div>
                     </td>
                 </tr>
             `;
@@ -353,38 +350,46 @@
             let textColor = 'text-gray-800';
             let icon = 'Info';
 
+            // ใช้สไตล์สีให้สอดคล้องกับโทน 'เฝ้าระวัง' (สีเหลืองอ่อน) สำหรับสถานะแจ้งเตือน
             if (sanitizedStatus.includes('ปกติ') || sanitizedStatus.includes('ทำงาน')) {
                 bgColor = 'bg-green-100';
                 textColor = 'text-green-800';
                 icon = 'CheckCircle';
             } else if (sanitizedStatus.includes('ผิดปกติ') || sanitizedStatus.includes('วิกฤติ') || sanitizedStatus.includes('ไม่ทำงาน') || sanitizedStatus.includes('แจ้งเตือน')) {
+                // สำหรับสถานีสูบน้ำที่แจ้งเตือนหรือวิกฤต ให้ใช้โทนสีแดง
                 bgColor = 'bg-red-100';
                 textColor = 'text-red-800';
                 icon = 'AlertTriangle';
-            } else {
+            } else if (sanitizedStatus.includes('เฝ้าระวัง') || sanitizedStatus.includes('สูง')) {
+                // ใช้โทนสีเหลืองอ่อน สำหรับสถานะเฝ้าระวังของเครื่องสูบน้ำ
                 bgColor = 'bg-yellow-100';
+                textColor = 'text-yellow-800';
+                icon = 'Eye';
+            } else {
+                bgColor = 'bg-yellow-100'; // Default ให้เป็นสีเหลืองอ่อนเพื่อให้สอดคล้องกับสไตล์เฝ้าระวัง
                 textColor = 'text-yellow-800';
                 icon = 'Eye';
             }
 
+
             const safeStationName = pumpStation.replace(/'/g, "\\'");
             const safeInspectionCount = inspectionCount.replace(/'/g, "\\'");
             
-            // **[CHANGE 1: Removed 'truncate' และใช้ 'whitespace-normal' เพื่อให้ข้อความ Wrap Text ได้]**
+            // **การจัดกึ่งกลาง Card (Center ทั้งแนวตั้งและแนวนอน)**
             return `
                 <div 
-                    class="p-2 ${bgColor} rounded-lg shadow-sm ring-1 ring-inset ring-opacity-50 flex items-start space-x-1 transition duration-200 hover:ring-2 hover:ring-offset-2 hover:ring-opacity-100 cursor-pointer w-full h-full"
+                    class="p-2 ${bgColor} rounded-lg shadow-sm ring-1 ring-inset ring-opacity-50 
+                           flex flex-col items-center justify-center text-center 
+                           transition duration-200 hover:ring-2 hover:ring-offset-2 hover:ring-opacity-100 cursor-pointer w-full h-full"
                     onclick="showInspectionModal('${safeStationName}', '${safeInspectionCount}')"
                 >
-                    <i data-lucide="${icon}" class="w-4 h-4 mt-0.5 ${textColor} flex-shrink-0"></i> 
-                    <div class="flex flex-col min-w-0"> 
-                        <span class="text-sm font-semibold ${textColor} whitespace-normal" title="${pumpStation}" style="word-break: break-word;">
-                            ${pumpStation}
-                        </span>
-                        <span class="text-xs ${textColor} opacity-85 mt-[-2px] whitespace-normal" title="${pumpStatus}" style="word-break: break-word;">
-                            ${pumpStatus}
-                        </span>
-                    </div>
+                    <i data-lucide="${icon}" class="w-5 h-5 mb-1 ${textColor} flex-shrink-0"></i> 
+                    <span class="text-sm font-semibold ${textColor} whitespace-normal" title="${pumpStation}" style="word-break: break-word;">
+                        ${pumpStation}
+                    </span>
+                    <span class="text-xs ${textColor} opacity-85 mt-[-2px] whitespace-normal" title="${pumpStatus}" style="word-break: break-word;">
+                        ${pumpStatus}
+                    </span>
                 </div>
             `;
         }
