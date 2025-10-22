@@ -37,9 +37,8 @@
         .custom-dashboard-grid {
             height: 100%; 
             display: grid;
-            /* **[สัดส่วนความสูงตามที่ผู้ใช้ต้องการ: 1.5fr (บน) / 1fr (ล่าง)]** */
+            /* สัดส่วนความสูงตามที่ผู้ใช้ต้องการ: 1.5fr (บน) / 1fr (ล่าง) */
             grid-template-rows: 1.5fr 1fr; 
-            /* 12 คอลัมน์สำหรับกำหนดสัดส่วนความกว้าง 8/4 และ 4/8 */
             grid-template-columns: repeat(12, 1fr); 
             gap: 1.5rem;
             overflow: hidden; 
@@ -62,17 +61,13 @@
         
         /* Area 1: Table (8/12 Width - เยอะ) */
         .table-td-area1, .table-th-area1 {
-            /* PADDING: ให้เล็กพอดี */
             padding: 0.35em 0.6em; 
-            /* FONT: ยืดหยุ่นเล็กน้อย */
             font-size: 0.8em; 
         }
 
         /* Area 2: Table (4/12 Width - น้อย) */
         .table-td-area2, .table-th-area2 { 
-             /* PADDING: เล็กมากเพื่อให้พอดีกรอบแคบ */
             padding: 0.15em 0.3em;
-            /* FONT: ยืดหยุ่นเล็กน้อย */
             font-size: 0.8em; 
         }
         
@@ -85,7 +80,7 @@
         .status-badge {
             padding: 0.05rem 0.3rem; 
             font-size: 0.7em; /* เล็กลง */
-            white-space: nowrap; 
+            /* Removed white-space: nowrap to allow wrapping if needed, but not necessary here */
         }
         .status-badge i { 
              width: 0.7em; 
@@ -240,26 +235,45 @@
         // ส่วนที่ 3: ฟังก์ชันการแสดงผล (Rendering)
         // =================================================================================================================================================
         
+        /**
+         * **[ปรับปรุง]** ฟังก์ชันสำหรับกำหนด Style, Icon, และข้อความแสดงผลของการแจ้งเตือน (Sheet 1 & 2)
+         */
         function getAlertStyles(alertLevel) {
             const sanitizedLevel = sanitizeText(alertLevel);
             
-            if (sanitizedLevel.includes('วิกฤติ') || sanitizedLevel.includes('ผิดปกติ') || sanitizedLevel.includes('อันตราย') || sanitizedLevel.includes('แจ้งเตือน')) {
-                return { color: 'bg-red-100 text-red-800 ring-red-300', icon: 'AlertTriangle' };
+            // 1. วิกฤติ (สีแดงเข้ม, ไอคอน BellRing, ข้อความ "วิกฤติ")
+            if (sanitizedLevel.includes('วิกฤติ') || sanitizedLevel.includes('อันตราย') || sanitizedLevel.includes('ผิดปกติ')) {
+                return { 
+                    color: 'bg-red-600 text-white ring-red-700', 
+                    icon: 'BellRing', 
+                    displayText: 'วิกฤติ' 
+                };
             }
             
-            if (sanitizedLevel.includes('เฝ้าระวัง') || sanitizedLevel.includes('สูง')) {
-                return { color: 'bg-amber-100 text-amber-800 ring-amber-300', icon: 'Eye' };
+            // 2. เฝ้าระวัง (สีเหลือง, ไอคอน Eye, ข้อความ "เฝ้าระวัง")
+            if (sanitizedLevel.includes('เฝ้าระวัง') || sanitizedLevel.includes('สูง') || sanitizedLevel.includes('แจ้งเตือน')) {
+                return { 
+                    color: 'bg-amber-100 text-amber-800 ring-amber-300', 
+                    icon: 'Eye',
+                    displayText: 'เฝ้าระวัง' 
+                };
             }
             
+            // 3. ปกติ (สีเขียว, ไอคอน CheckCircle, ข้อความ "ปกติ")
             if (sanitizedLevel.includes('ปกติ') || sanitizedLevel.includes('ทำงาน')) {
-                return { color: 'bg-green-100 text-green-800 ring-green-300', icon: 'CheckCircle' };
+                return { 
+                    color: 'bg-green-600 text-white ring-green-700', 
+                    icon: 'CheckCircle',
+                    displayText: 'ปกติ' 
+                };
             }
             
-            if (sanitizedLevel.includes('ไม่ทำงาน')) {
-                return { color: 'bg-indigo-100 text-indigo-800 ring-indigo-300', icon: 'PauseCircle' };
-            }
-
-            return { color: 'bg-gray-100 text-gray-800 ring-gray-300', icon: 'Info' };
+            // Default/N/A
+            return { 
+                color: 'bg-gray-100 text-gray-800 ring-gray-300', 
+                icon: 'Info',
+                displayText: 'N/A' 
+            };
         }
 
         function getDiffIcon(diff) {
@@ -279,8 +293,8 @@
          * สร้างแถวตารางสำหรับข้อมูลระดับน้ำ (Sheet 1 & 2)
          */
         function createWaterTableRow(data, isSheet1) {
-            const alertLevel = data[KEY_MAP.ALERT_LEVEL] || 'N/A';
-            const alertStyles = getAlertStyles(alertLevel);
+            const alertLevelRaw = data[KEY_MAP.ALERT_LEVEL] || 'N/A';
+            const alertStyles = getAlertStyles(alertLevelRaw);
             const diffValue = data[KEY_MAP.DIFF_LEVEL] || '0.00';
             const diffIcon = getDiffIcon(diffValue);
 
@@ -291,12 +305,15 @@
             if (pointName.includes('เขื่อนเจ้าพระยา')) { unit = 'ลบ.ม./วินาที'; } 
             if (displayLevel === 'N/A') { unit = ''; }
 
-            // ใช้ Class ที่ถูกปรับปรุงให้ Fluid
             const tdClass = isSheet1 ? 'table-td-area1' : 'table-td-area2';
             
+            // **[CHANGE 2: Font size สำหรับ Sheet 2 "จุดวัด" column]**
+            // ใช้คลาสที่กำหนดให้ตัวอักษรใหญ่ขึ้นสำหรับ Sheet 2
+            const pointNameClass = (!isSheet1) ? 'text-[1.1em] font-semibold' : 'font-medium'; 
+
             return `
                 <tr class="border-b hover:bg-gray-50 transition duration-150">
-                    <td class="${tdClass} whitespace-nowrap font-medium text-gray-900 truncate">
+                    <td class="${tdClass} whitespace-normal text-gray-900 ${pointNameClass}">
                         ${data[KEY_MAP.WATER_POINT] || 'N/A'} 
                     </td>
                     <td class="${tdClass} whitespace-nowrap font-bold text-gray-900 text-[1.1em]">
@@ -312,9 +329,11 @@
                         </div>
                     </td>
                     <td class="${tdClass} whitespace-nowrap text-center">
-                        <span class="status-badge ${alertStyles.color} ring-1 ring-inset inline-flex items-center">
+                        <!-- **[CHANGE 3: New Alert Badge Styles (Centered, new text/icon)]** -->
+                        <!-- ใช้ justify-center เพื่อจัดข้อความไว้ตรงกลาง -->
+                        <span class="status-badge ${alertStyles.color} ring-1 ring-inset inline-flex items-center justify-center mx-auto">
                              <i data-lucide="${alertStyles.icon}" class="status-badge i"></i>
-                            ${alertLevel}
+                            ${alertStyles.displayText}
                         </span>
                     </td>
                 </tr>
@@ -351,7 +370,7 @@
             const safeStationName = pumpStation.replace(/'/g, "\\'");
             const safeInspectionCount = inspectionCount.replace(/'/g, "\\'");
             
-            // ปรับขนาด Card และ Text ให้เล็กลงและยืดหยุ่นมากขึ้น
+            // **[CHANGE 1: Removed 'truncate' และใช้ 'whitespace-normal' เพื่อให้ข้อความ Wrap Text ได้]**
             return `
                 <div 
                     class="p-2 ${bgColor} rounded-lg shadow-sm ring-1 ring-inset ring-opacity-50 flex items-start space-x-1 transition duration-200 hover:ring-2 hover:ring-offset-2 hover:ring-opacity-100 cursor-pointer w-full h-full"
@@ -359,10 +378,10 @@
                 >
                     <i data-lucide="${icon}" class="w-4 h-4 mt-0.5 ${textColor} flex-shrink-0"></i> 
                     <div class="flex flex-col min-w-0"> 
-                        <span class="text-sm font-semibold ${textColor} truncate" title="${pumpStation}">
+                        <span class="text-sm font-semibold ${textColor} whitespace-normal" title="${pumpStation}" style="word-break: break-word;">
                             ${pumpStation}
                         </span>
-                        <span class="text-xs ${textColor} opacity-85 mt-[-2px] truncate" title="${pumpStatus}">
+                        <span class="text-xs ${textColor} opacity-85 mt-[-2px] whitespace-normal" title="${pumpStatus}" style="word-break: break-word;">
                             ${pumpStatus}
                         </span>
                     </div>
@@ -454,7 +473,7 @@
             // กำหนดขนาดและขอบเขต
             const margin = { top: 20, right: 10, bottom: 60, left: 40 }; 
             
-            // ใช้ขนาดของ Container ปัจจุบัน (***ทำให้กราฟพอดีกรอบอัตโนมัติ***)
+            // ใช้ขนาดของ Container ปัจจุบัน (ทำให้กราฟพอดีกรอบอัตโนมัติ)
             const containerWidth = container.clientWidth;
             const containerHeight = container.clientHeight; 
             
