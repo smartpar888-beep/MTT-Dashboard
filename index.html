@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard การบริหารจัดการน้ำและสิ่งแวดล้อม</title>
+    <!-- 1. เปลี่ยนชื่อ Dashboard เป็น "การบริหารจัดการน้ำเมืองทองธานี" -->
+    <title>การบริหารจัดการน้ำเมืองทองธานี</title>
+    
+    <!-- Google Font KANIT -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons CDN -->
@@ -12,9 +16,9 @@
     <script src="https://d3js.org/d3.v7.min.js"></script> 
     
     <style>
-        /* กำหนดฟอนต์ Inter สำหรับ Tailwind */
+        /* 1. Dashboard ทั้งหมดให้ใช้ Font "google KANIT" */
         :root {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Kanit', sans-serif;
         }
         
         html, body {
@@ -54,7 +58,7 @@
         /* Table Layout (Sheet 1 & 2) */
         /* -------------------------------------------------------- */
         .fluid-table {
-            table-layout: fixed; /* บังคับให้คอลัมน์ใช้ความกว้างตามที่กำหนด */
+            table-layout: fixed; 
             width: 100%; 
             border-collapse: collapse;
         }
@@ -78,14 +82,16 @@
         .fluid-table thead th:nth-child(4), .fluid-table tbody td:nth-child(4) { width: 15%; } /* แจ้งเตือน - แคบสุด */
 
         .status-badge {
-            padding: 0.05rem 0.3rem; 
-            font-size: 0.7em; /* เล็กลง */
+            padding: 0.35rem 0.5rem; /* ปรับขนาด Padding ให้ใหญ่ขึ้นเล็กน้อย */
+            font-size: 0.85em; /* ปรับ Font size ให้ใหญ่ขึ้นเล็กน้อย */
+            font-weight: 600; /* ทำให้ตัวอักษรเข้มขึ้น */
+            letter-spacing: 0.025em;
         }
         
         /* D3 Chart Text Styling - ให้เล็กลง */
         #rainfall-chart-container text {
-            font-family: 'Inter', sans-serif;
-            font-size: 0.65rem; /* 10.4px */
+            font-family: 'Kanit', sans-serif;
+            font-size: 0.65rem; 
         }
         
         /* Mobile Fallback */
@@ -230,8 +236,8 @@
         // =================================================================================================================================================
         
         /**
-         * ฟังก์ชันสำหรับกำหนด Style, Icon, และข้อความแสดงผลของการแจ้งเตือน (Sheet 1 & 2)
-         * อัปเดตเพื่อให้ 'วิกฤติ' และ 'ปกติ' ใช้สไตล์พื้นหลังสีอ่อน (Light Background) เหมือน 'เฝ้าระวัง'
+         * 7. แก้ไข Alert Styling: ทำให้ 'ปกติ' 'วิกฤติ' และ 'เฝ้าระวัง' ใช้ Light Style (พื้นหลังสีอ่อน/ตัวอักษรสีเข้ม) เหมือนกันทั้งหมด
+         * และเอา Icon ออกจากตารางตามที่ผู้ใช้แจ้ง (Icon จะยังอยู่ใน Title และ Card)
          */
         function getAlertStyles(alertLevel) {
             const sanitizedLevel = sanitizeText(alertLevel);
@@ -239,16 +245,17 @@
             // 1. วิกฤติ (สีแดงอ่อน/แดงเข้ม, ไอคอน BellRing, ข้อความ "วิกฤติ")
             if (sanitizedLevel.includes('วิกฤติ') || sanitizedLevel.includes('อันตราย') || sanitizedLevel.includes('ผิดปกติ')) {
                 return { 
-                    // 🚨 NEW: ใช้ Light Background เพื่อให้เข้ากับสไตล์ 'เฝ้าระวัง'
+                    // Light Style: bg-red-100 text-red-800
                     color: 'bg-red-100 text-red-800 ring-red-300', 
                     icon: 'BellRing', 
                     displayText: 'วิกฤติ' 
                 };
             }
             
-            // 2. เฝ้าระวัง (สีเหลืองอ่อน/ส้มเข้ม, ไอคอน Eye, ข้อความ "เฝ้าระวัง") **รูปแบบที่ท่านชื่นชอบ (Keep)**
+            // 2. เฝ้าระวัง (สีเหลืองอ่อน/ส้มเข้ม, ไอคอน Eye, ข้อความ "เฝ้าระวัง")
             if (sanitizedLevel.includes('เฝ้าระวัง') || sanitizedLevel.includes('สูง') || sanitizedLevel.includes('แจ้งเตือน')) {
                 return { 
+                    // Light Style: bg-amber-100 text-amber-800 (นี่คือสไตล์ที่ต้องการให้ทุกอันใช้)
                     color: 'bg-amber-100 text-amber-800 ring-amber-300', 
                     icon: 'Eye', 
                     displayText: 'เฝ้าระวัง' 
@@ -258,7 +265,7 @@
             // 3. ปกติ (สีเขียวอ่อน/เขียวเข้ม, ไอคอน CheckCircle, ข้อความ "ปกติ")
             if (sanitizedLevel.includes('ปกติ') || sanitizedLevel.includes('ทำงาน')) {
                 return { 
-                    // 🟢 NEW: ใช้ Light Background เพื่อให้เข้ากับสไตล์ 'เฝ้าระวัง'
+                    // Light Style: bg-green-100 text-green-800
                     color: 'bg-green-100 text-green-800 ring-green-300', 
                     icon: 'CheckCircle', 
                     displayText: 'ปกติ' 
@@ -299,12 +306,11 @@
             const pointName = data[KEY_MAP.WATER_POINT] || '';
             let unit = 'รทก./MSL.'; 
 
-            if (pointName.includes('เขื่อนเจ้าพระยา')) { unit = 'ลบ.ม./วินาที'; } 
+            if (pointName.includes('เขื่อนเจ้าพระยา') || pointName.includes('แม่น้ำเจ้าพระยา')) { unit = 'ลบ.ม./วินาที'; } 
             if (displayLevel === 'N/A') { unit = ''; }
 
             const tdClass = isSheet1 ? 'table-td-area1' : 'table-td-area2';
             
-            // Font size สำหรับ Sheet 2 "จุดวัด" column
             const pointNameClass = (!isSheet1) ? 'text-[1.1em] font-semibold' : 'font-medium'; 
 
             return `
@@ -324,11 +330,10 @@
                             <i data-lucide="${diffIcon.icon}" class="w-[0.8em] h-[0.8em] ${diffIcon.iconColor}"></i>
                         </div>
                     </td>
-                    <!-- ไอคอนและป้ายจะได้รับสีจาก alertStyles.color ซึ่งตอนนี้เป็นสีพื้นหลังอ่อนและตัวอักษรเข้มทั้งหมด -->
+                    <!-- 7. ไอคอนถูกเอาออกจาก Cell แจ้งเตือนตามที่ผู้ใช้แจ้ง -->
                     <td class="${tdClass} whitespace-nowrap text-center">
                         <div class="flex justify-center items-center w-full h-full"> 
-                            <span class="status-badge ${alertStyles.color} ring-1 ring-inset inline-flex items-center space-x-1 justify-center">
-                                <i data-lucide="${alertStyles.icon}" class="w-[0.7em] h-[0.7em]"></i>
+                            <span class="status-badge ${alertStyles.color} ring-1 ring-inset inline-flex items-center justify-center">
                                 ${alertStyles.displayText}
                             </span>
                         </div>
@@ -350,32 +355,29 @@
             let textColor = 'text-gray-800';
             let icon = 'Info';
 
-            // ใช้สไตล์สีให้สอดคล้องกับโทน 'เฝ้าระวัง' (สีเหลืองอ่อน) สำหรับสถานะแจ้งเตือน
+            // ใช้สไตล์สีให้สอดคล้องกับโทน 'Light Style' (ตามที่ผู้ใช้ต้องการ)
             if (sanitizedStatus.includes('ปกติ') || sanitizedStatus.includes('ทำงาน')) {
                 bgColor = 'bg-green-100';
                 textColor = 'text-green-800';
                 icon = 'CheckCircle';
             } else if (sanitizedStatus.includes('ผิดปกติ') || sanitizedStatus.includes('วิกฤติ') || sanitizedStatus.includes('ไม่ทำงาน') || sanitizedStatus.includes('แจ้งเตือน')) {
-                // สำหรับสถานีสูบน้ำที่แจ้งเตือนหรือวิกฤต ให้ใช้โทนสีแดง
                 bgColor = 'bg-red-100';
                 textColor = 'text-red-800';
                 icon = 'AlertTriangle';
             } else if (sanitizedStatus.includes('เฝ้าระวัง') || sanitizedStatus.includes('สูง')) {
-                // ใช้โทนสีเหลืองอ่อน สำหรับสถานะเฝ้าระวังของเครื่องสูบน้ำ
-                bgColor = 'bg-yellow-100';
-                textColor = 'text-yellow-800';
+                bgColor = 'bg-amber-100';
+                textColor = 'text-amber-800';
                 icon = 'Eye';
             } else {
-                bgColor = 'bg-yellow-100'; // Default ให้เป็นสีเหลืองอ่อนเพื่อให้สอดคล้องกับสไตล์เฝ้าระวัง
-                textColor = 'text-yellow-800';
-                icon = 'Eye';
+                bgColor = 'bg-gray-100'; 
+                textColor = 'text-gray-800';
+                icon = 'Info';
             }
 
 
             const safeStationName = pumpStation.replace(/'/g, "\\'");
             const safeInspectionCount = inspectionCount.replace(/'/g, "\\'");
             
-            // **การจัดกึ่งกลาง Card (Center ทั้งแนวตั้งและแนวนอน)**
             return `
                 <div 
                     class="p-2 ${bgColor} rounded-lg shadow-sm ring-1 ring-inset ring-opacity-50 
@@ -443,13 +445,13 @@
         
         // เก็บข้อมูล Rainfall ล่าสุดไว้เพื่อให้สามารถวาดใหม่ได้
         let latestRainfallData = [];
-        
+        let latestRainfallDuration = 'N/A'; // 5. เก็บข้อมูลระยะเวลาฝนตก
+
         /**
          * วาดกราฟแท่งปริมาณน้ำฝนโดยใช้ D3.js (Sheet 4) 
          */
         function drawRainfallBarChart(data) {
-            latestRainfallData = data; // อัปเดตข้อมูลล่าสุด
-            const containerId = '#rainfall-chart-container';
+            const containerId = '#rainfall-chart-d3-container'; // เปลี่ยน ID สำหรับ D3 Chart
             const container = document.querySelector(containerId);
             
             // ล้าง SVG เก่า
@@ -482,10 +484,10 @@
             const containerWidth = container.clientWidth;
             const containerHeight = container.clientHeight; 
             
-            const width = Math.max(containerWidth - margin.left - margin.right, 50); // Min width 50
-            const height = Math.max(containerHeight - margin.top - margin.bottom, 50); // Min height 50
+            const width = Math.max(containerWidth - margin.left - margin.right, 50); 
+            const height = Math.max(containerHeight - margin.top - margin.bottom, 50); 
 
-            if (width < 50 || height < 50) return; // ไม่วาดถ้าพื้นที่เล็กเกินไป
+            if (width < 50 || height < 50) return; 
 
             // สร้าง SVG Element
             const svg = d3.select(containerId)
@@ -564,6 +566,25 @@
                 .text(d => d.amount.toFixed(2));
                 
         }
+
+        /**
+         * 5. ฟังก์ชันสำหรับวาด Card ระยะเวลาฝนตก (Panel)
+         */
+        function renderDurationPanel(duration) {
+            const container = document.getElementById('rainfall-duration-panel');
+            if (!container) return;
+
+            // ใช้สไตล์ Card ที่เข้ากับโทนสี Blue Area
+            container.innerHTML = `
+                <div class="h-full bg-blue-50/50 rounded-lg p-4 border border-blue-200 flex flex-col items-center justify-center text-center shadow-md">
+                    <i data-lucide="Clock" class="w-8 h-8 text-blue-700 mb-2"></i>
+                    <p class="text-sm font-semibold text-gray-700">ระยะเวลาที่ฝนตก</p>
+                    <p class="text-3xl font-extrabold text-blue-600 mt-1">${duration || 'N/A'}</p>
+                    <p class="text-xs text-gray-500 mt-1">ข้อมูลจากจุดวัดล่าสุด</p>
+                </div>
+            `;
+            lucide.createIcons();
+        }
         
         // ฟังก์ชันวาดกราฟใหม่เมื่อมีการ Resize
         function handleResize() {
@@ -602,7 +623,6 @@
                         </tr>
                     `;
                 } else {
-                    // ปรับขนาด Error Card ให้เล็กลงเพื่อให้พอดีพื้นที่ Green Area
                     container.innerHTML = `
                         <div class="col-span-full w-full p-4 text-center text-red-500 bg-red-50/50 rounded-lg">
                             <i data-lucide="CloudOff" class="w-6 h-6 mx-auto mb-2"></i>
@@ -692,8 +712,23 @@
                 updateTable('chaophraya-table-body', chaoPhrayaData); 
                 // 3. Sheet 3 Cards
                 updateTable('pump-status-card-container', pumpStatusData); 
-                // 4. Sheet 4 Graph
+                
+                // 4. Sheet 4 Graph & Duration Card
+                latestRainfallData = rainfallData;
+                
+                const chartData = rainfallData
+                    .map(d => ({
+                        point: d[KEY_MAP.RAIN_POINT] || 'N/A',
+                        amount: parseFloat(d[KEY_MAP.RAIN_AMOUNT]),
+                        duration: d[KEY_MAP.RAIN_DURATION] || 'N/A' 
+                    }))
+                    .filter(d => !isNaN(d.amount) && d.point !== 'N/A' && d.amount >= 0);
+
+                // ดึงระยะเวลาจากแถวแรกที่มีข้อมูล (สมมติว่าเป็นข้อมูลล่าสุด)
+                latestRainfallDuration = chartData.length > 0 ? chartData[0].duration : 'N/A';
+                
                 drawRainfallBarChart(rainfallData);
+                renderDurationPanel(latestRainfallDuration); // 5. แสดง Card ระยะเวลาฝนตก
                 
                 // อัปเดตเวลาล่าสุด
                 const now = new Date();
@@ -743,8 +778,9 @@
     <header class="mb-6 flex-shrink-0"> 
         <div class="flex items-center justify-between flex-wrap gap-4">
             <div>
+                <!-- 1. เปลี่ยนชื่อ Dashboard -->
                 <h1 class="text-3xl font-extrabold text-gray-800">
-                    Dashboard การบริหารจัดการน้ำและสิ่งแวดล้อม
+                    การบริหารจัดการน้ำเมืองทองธานี
                 </h1>
                 <p class="text-gray-500 mt-1">
                     ภาพรวมสถานการณ์ระดับน้ำ และเครื่องสูบน้ำแบบเรียลไทม์
@@ -767,13 +803,13 @@
     <!-- Main Content Container: ใช้พื้นที่ความสูงที่เหลือทั้งหมด -->
     <main class="custom-dashboard-grid md:h-[calc(100vh-100px)]"> 
             
-        <!-- 1. Area 1 (Sheet URL 1: สถานะการตรวจวัดระดับ) - Orange Area (8/12 width, ~60% height) -->
+        <!-- 1. Area 1 (Sheet URL 1) - Orange Area (8/12 width, ~60% height) -->
         <div class="area-1-orange bg-white p-6 rounded-xl shadow-lg flex flex-col overflow-hidden">
+            <!-- 2. เปลี่ยนชื่อหัวข้อเป็น "ข้อมูลระดับน้ำเมืองทองธานี" -->
             <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center flex-shrink-0">
                 <i data-lucide="Gauge" class="w-5 h-5 mr-2 text-orange-600"></i>
-                สถานะการตรวจวัดระดับน้ำ (4 จุด - 4 รอบ/วัน)
+                ข้อมูลระดับน้ำเมืองทองธานี
             </h2>
-            <!-- ลบ overflow-y-auto ออกจาก container หลัก เพื่อให้ตารางเต็มพื้นที่ -->
             <div class="flex-grow -mx-6 px-6 overflow-y-auto"> 
                 <table class="fluid-table divide-y divide-gray-200"> 
                     <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
@@ -799,13 +835,13 @@
             </div>
         </div>
 
-        <!-- 2. Area 2 (Sheet URL 2: ระดับน้ำเจ้าพระยา) - Yellow Area (4/12 width, ~60% height) -->
+        <!-- 2. Area 2 (Sheet URL 2) - Yellow Area (4/12 width, ~60% height) -->
         <div class="area-2-yellow bg-white p-4 rounded-xl shadow-lg flex flex-col overflow-hidden">
+            <!-- 3. เปลี่ยนชื่อหัวข้อเป็น "ข้อมูลระดับน้ำแม่น้ำเจ้าพระยา" -->
             <h2 class="text-lg font-bold text-gray-800 mb-3 flex items-center flex-shrink-0">
                 <i data-lucide="Waves" class="w-4 h-4 mr-1 text-yellow-600"></i>
-                ข้อมูลระดับน้ำเจ้าพระยา (4 จุด - 3 รอบ/วัน)
+                ข้อมูลระดับน้ำแม่น้ำเจ้าพระยา
             </h2>
-            <!-- ลบ overflow-y-auto ออกจาก container หลัก เพื่อให้ตารางเต็มพื้นที่ -->
             <div class="flex-grow -mx-4 px-4 overflow-y-auto">
                 <table class="fluid-table divide-y divide-gray-200">
                     <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
@@ -833,24 +869,33 @@
         
         <!-- 3. Area 3 (Sheet URL 4: กราฟปริมาณน้ำฝน) - Blue Area (4/12 width, ~40% height) -->
         <div class="area-3-blue bg-white p-6 rounded-xl shadow-lg flex flex-col overflow-hidden">
+            <!-- 4. เปลี่ยนชื่อหัวข้อเป็น "ปริมาณน้ำฝน (มม.) และระยะเวลาที่ฝนตก" -->
             <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center flex-shrink-0">
                 <i data-lucide="CloudRain" class="w-5 h-5 mr-2 text-blue-600"></i>
-                ปริมาณน้ำฝน (มม.) และระยะเวลา
+                ปริมาณน้ำฝน (มม.) และระยะเวลาที่ฝนตก
             </h2>
-            <!-- Chart Container: flex-grow ทำให้ Container ยืดเต็มพื้นที่ที่เหลือ -->
-            <div id="rainfall-chart-container" class="w-full flex-grow min-h-[50px]"> 
-                <!-- Chart will be drawn here, or error message will be displayed -->
+            
+            <!-- 5. ปรับ Layout ภายใน Area 3 เพื่อวาง Chart และ Card ระยะเวลาฝนตกเคียงข้างกัน -->
+            <div class="grid grid-cols-12 gap-4 flex-grow min-h-[50px]">
+                <!-- Chart Container (ใช้พื้นที่ 8/12) -->
+                <div id="rainfall-chart-d3-container" class="col-span-12 md:col-span-8 w-full h-full min-h-[150px]"> 
+                    <!-- Chart will be drawn here -->
+                </div>
+                <!-- Duration Card (ใช้พื้นที่ 4/12) -->
+                <div id="rainfall-duration-panel" class="col-span-12 md:col-span-4 w-full h-full min-h-[100px]">
+                    <!-- Duration Card will be rendered here by JS -->
+                </div>
             </div>
         </div>
 
 
         <!-- 4. Area 4 (Sheet URL 3: สถานะเครื่องสูบน้ำ - CARDS) - Green Area (8/12 width, ~40% height) -->
         <div class="area-4-green bg-white p-6 rounded-xl shadow-lg flex flex-col overflow-hidden">
+            <!-- 6. เปลี่ยนชื่อหัวข้อเป็น "สถานะเครื่องสูบน้ำ" -->
             <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center flex-shrink-0">
                 <i data-lucide="Box" class="w-5 h-5 mr-2 text-green-600"></i>
-                สถานะเครื่องสูบน้ำ (14 สถานี)
+                สถานะเครื่องสูบน้ำ
             </h2>
-            <!-- Card Container: ใช้ Grid ภายในแบบ Auto-Fit เพื่อให้ Card ปรับขนาดและจำนวนแถวอัตโนมัติ -->
             <div id="pump-status-card-container" class="grid gap-2 overflow-y-auto flex-grow" 
                 style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));">
                 <!-- Cards will be injected by JavaScript -->
