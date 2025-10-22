@@ -75,37 +75,68 @@
             grid-row: 2;
         }
         
-        /* Style adjustments to fit content tightly (NEW) */
+        /* -------------------------------------------------------- */
+        /* Custom Styles for Extreme Fit to Frame (New) */
+        /* -------------------------------------------------------- */
         
-        /* สำหรับตาราง Area 1 (ใหญ่) - ลด Padding และ Font Size เล็กน้อย */
+        /* สำหรับตาราง Area 1 (ลดลง ~20%) */
         .table-td-area1 { 
-            padding: 0.5rem 0.75rem; /* p-2/p-3 */
-            font-size: 0.875rem; /* text-sm */
-        }
-        .text-lg-area1 { /* สำหรับค่าระดับน้ำใน Area 1 */
-            font-size: 1.125rem; /* text-lg */
-        }
-
-        /* สำหรับตาราง Area 2 (เล็ก) - ลด Padding และ Font Size ให้เล็กมาก */
-        .table-td-area2 { 
-            padding: 0.25rem 0.4rem; /* p-1/p-1.5 */
+            padding: 0.35rem 0.6rem; 
             font-size: 0.75rem; /* text-xs */
         }
-        .text-base-area2 { /* สำหรับค่าระดับน้ำใน Area 2 */
-            font-size: 0.875rem; /* text-sm */
+        .table-th-area1 { /* Header Text for Area 1 */
+            padding: 0.35rem 0.6rem;
+            font-size: 0.65rem; /* ~10px */
+            font-weight: 600;
+            color: #6b7280; /* gray-500 */
+            text-transform: uppercase;
+        }
+        .text-lg-area1 { /* สำหรับค่าระดับน้ำปัจจุบันใน Area 1 */
+            font-size: 0.95rem; /* Reduced from 1.125rem */
+        }
+
+        /* สำหรับตาราง Area 2 (ลดลง ~10%) */
+        .table-td-area2 { 
+            padding: 0.15rem 0.3rem; 
+            font-size: 0.625rem; /* 10px */
+        }
+        .table-th-area2 { /* Header Text for Area 2 */
+            padding: 0.15rem 0.3rem;
+            font-size: 0.55rem; /* ~9px (Extremely small) */
+            font-weight: 600;
+            color: #6b7280; /* gray-500 */
+            text-transform: uppercase;
+        }
+        .text-base-area2 { /* สำหรับค่าระดับน้ำปัจจุบันใน Area 2 */
+            font-size: 0.75rem; /* text-xs */
         }
         
         /* ปรับขนาด Status Badge ให้เล็กลงมากเพื่อให้พอดีแถว */
         .status-badge {
-            padding: 0.1rem 0.4rem; 
-            font-size: 0.625rem; /* text-[10px] */
-            white-space: nowrap; /* ป้องกันการขึ้นบรรทัดใหม่ */
+            padding: 0.05rem 0.3rem; 
+            font-size: 0.55rem; /* ~9px */
+            white-space: nowrap; 
+        }
+        .status-badge i { /* Icon inside status badge */
+             width: 0.5rem; /* 8px */
+             height: 0.5rem;
+             margin-right: 0.15rem;
+        }
+        
+        /* ไอคอนในคอลัมน์ ส่วนต่าง */
+        .icon-area1 {
+            width: 0.875rem; /* 14px */
+            height: 0.875rem;
+        }
+        .icon-area2 {
+            width: 0.75rem; /* 12px */
+            height: 0.75rem;
         }
         
         /* D3 Chart Text Styling */
         #rainfall-chart-container text {
             font-family: 'Inter', sans-serif;
-            font-size: 10px; /* ขนาดตัวอักษรเล็กสำหรับกราฟ */
+            font-size: 9px; /* ลดขนาดตัวอักษรในกราฟลงอีก */
         }
 
         /* For mobile/small screen: Use 1 column layout */
@@ -293,7 +324,6 @@
 
         /**
          * สร้างแถวตารางสำหรับข้อมูลระดับน้ำ (Sheet 1 & 2)
-         * ใช้ CSS Class ใหม่ที่ถูกปรับให้ FIT กับกรอบ (table-td-area1, table-td-area2)
          */
         function createWaterTableRow(data, isSheet1) {
             const alertLevel = data[KEY_MAP.ALERT_LEVEL] || 'N/A';
@@ -308,11 +338,11 @@
             if (pointName.includes('เขื่อนเจ้าพระยา')) { unit = 'ลบ.ม./วินาที'; } 
             if (displayLevel === 'N/A') { unit = ''; }
 
-            // กำหนด CSS Class ใหม่เพื่อบังคับขนาดให้พอดี
+            // กำหนด CSS Class ใหม่ที่ถูกปรับให้ FIT กับกรอบ
             const tdClass = isSheet1 ? 'table-td-area1' : 'table-td-area2';
             const levelTextClass = isSheet1 ? 'text-lg-area1 font-bold' : 'text-base-area2 font-semibold';
-            const diffTextClass = isSheet1 ? 'text-sm' : 'text-xs';
-            const iconSize = isSheet1 ? 'w-4 h-4' : 'w-3 h-3'; // Shrink icons slightly
+            const diffTextClass = isSheet1 ? 'text-xs' : 'text-[10px]'; // ใช้ text size ที่เล็กลงมาก
+            const iconSize = isSheet1 ? 'icon-area1' : 'icon-area2'; // ใช้ custom icon classes
 
             return `
                 <tr class="border-b hover:bg-gray-50 transition duration-150">
@@ -332,7 +362,7 @@
                     </td>
                     <td class="${tdClass} whitespace-nowrap">
                         <span class="status-badge ${alertStyles.color} ring-1 ring-inset">
-                             <i data-lucide="${alertStyles.icon}" class="w-2.5 h-2.5 mr-1"></i>
+                             <i data-lucide="${alertStyles.icon}" class="status-badge i"></i>
                             ${alertLevel}
                         </span>
                     </td>
@@ -768,16 +798,16 @@
                 <table class="table-auto divide-y divide-gray-200 w-full"> 
                     <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
                         <tr>
-                            <th class="table-td-area1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                            <th class="table-th-area1 text-left uppercase tracking-wider whitespace-nowrap">
                                 จุดวัด
                             </th>
-                            <th class="table-td-area1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                            <th class="table-th-area1 text-left uppercase tracking-wider whitespace-nowrap">
                                 ระดับน้ำปัจจุบัน
                             </th>
-                            <th class="table-td-area1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                            <th class="table-th-area1 text-left uppercase tracking-wider whitespace-nowrap">
                                 ส่วนต่าง (เทียบครั้งก่อน)
                             </th>
-                            <th class="table-td-area1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                            <th class="table-th-area1 text-left uppercase tracking-wider whitespace-nowrap">
                                 ระดับการแจ้งเตือน
                             </th>
                         </tr>
@@ -800,16 +830,16 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
                         <tr>
-                            <th class="table-td-area2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                            <th class="table-th-area2 text-left uppercase tracking-wider whitespace-nowrap">
                                 จุดวัด
                             </th>
-                            <th class="table-td-area2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                            <th class="table-th-area2 text-left uppercase tracking-wider whitespace-nowrap">
                                 ระดับน้ำ
                             </th>
-                            <th class="table-td-area2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                            <th class="table-th-area2 text-left uppercase tracking-wider whitespace-nowrap">
                                 ส่วนต่าง
                             </th>
-                            <th class="table-td-area2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                            <th class="table-th-area2 text-left uppercase tracking-wider whitespace-nowrap">
                                 แจ้งเตือน
                             </th>
                         </tr>
