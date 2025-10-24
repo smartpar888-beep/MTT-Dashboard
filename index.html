@@ -43,6 +43,7 @@
         /* -------------------------------------------------------- */
         .custom-dashboard-grid {
             /* Default: Mobile/Small screen (Vertical) - Column layout */
+            display: grid; /* IMPORTANT: Ensure display is grid here */
             grid-template-rows: auto; 
             grid-template-columns: 1fr; 
             gap: 1.5rem;
@@ -51,23 +52,34 @@
             height: auto; 
             overflow-y: visible; /* Allow body to scroll */
             
-            padding-bottom: 1rem; /* Add padding for bottom margin on mobile */
-            flex-grow: 1; /* Allow it to take up available vertical space on large screens */
+            padding-bottom: 1rem; 
+            flex-grow: 1; 
         }
 
         /* Desktop/Large Screen (Horizontal) - Use the 4-Area Grid */
-        @media (min-width: 1024px) { /* Adjust breakpoint if needed (lg: or xl:) */
+        @media (min-width: 1024px) { 
             .custom-dashboard-grid {
-                grid-template-rows: 1.5fr 1fr; /* 60/40 height split */
+                /* Fix: Set main container height to fill the remaining viewport space */
+                height: 100%; 
+                
+                /* Define the 4-area grid structure (12 columns, 1.5fr / 1fr rows) */
+                grid-template-rows: 1.5fr 1fr; 
                 grid-template-columns: repeat(12, 1fr); 
-                height: 100%; /* Set to 100% of calculated height on large screens */
                 overflow-y: hidden; /* No scrolling on large screens */
-                padding-bottom: 0; /* Remove mobile-specific padding */
+                padding-bottom: 0;
             }
-            .area-1-orange { grid-column: span 8; grid-row: 1; height: 100%; }
-            .area-2-yellow { grid-column: span 4; grid-row: 1; height: 100%; }
-            .area-3-blue { grid-column: span 4; grid-row: 2; height: 100%; }
-            .area-4-green { grid-column: span 8; grid-row: 2; height: 100%; }
+            
+            /* Assign Grid Areas */
+            .area-1-orange { grid-column: span 8; grid-row: 1; }
+            .area-2-yellow { grid-column: span 4; grid-row: 1; }
+            .area-3-blue { grid-column: span 4; grid-row: 2; }
+            .area-4-green { grid-column: span 8; grid-row: 2; }
+
+             /* Fix: Remove explicit height: 100% from area items. 
+                The height is managed by grid-template-rows (1.5fr / 1fr). */
+            .area-1-orange, .area-2-yellow, .area-3-blue, .area-4-green { 
+                height: auto; /* Let the grid manage the height */
+            }
         }
 
         /* For screens between mobile and large desktop (Tablet/md:) */
@@ -78,10 +90,16 @@
                 grid-template-columns: repeat(12, 1fr);
                 overflow-y: visible; /* Allow body to scroll */
             }
-            .area-1-orange { grid-column: span 12; grid-row: 1; min-height: 400px; }
-            .area-2-yellow { grid-column: span 12; grid-row: 2; min-height: 300px; }
-            .area-3-blue { grid-column: span 12; grid-row: 3; min-height: 350px; } 
-            .area-4-green { grid-column: span 12; grid-row: 4; min-height: 300px; }
+            /* Use col-span-12 to make each area full width */
+            .area-1-orange, .area-2-yellow, .area-3-blue, .area-4-green { 
+                grid-column: span 12; 
+                min-height: 250px; /* Ensure minimum height for content visibility */
+            }
+            /* Re-order elements slightly for tablet view (optional) */
+            .area-1-orange { grid-row: 1; }
+            .area-2-yellow { grid-row: 2; }
+            .area-3-blue { grid-row: 3; } 
+            .area-4-green { grid-row: 4; }
         }
 
         /* -------------------------------------------------------- */
@@ -828,7 +846,8 @@
     </header>
     
     <!-- Main Content Container: ใช้ flex-grow เพื่อขยายพื้นที่ตามความสูงที่เหลือบน Desktop แต่ปล่อยให้ content กำหนดความสูงเองบน Mobile -->
-    <main class="custom-dashboard-grid flex-grow lg:h-[calc(100vh-140px)]"> 
+    <!-- Fix: เพิ่ม h-full เข้าไปใน main เพื่อช่วยให้ Grid ด้านในคำนวณความสูงได้อย่างถูกต้องบน PC -->
+    <main class="custom-dashboard-grid flex-grow h-full lg:h-[calc(100vh-140px)]"> 
             
         <!-- 1. Area 1: ข้อมูลระดับน้ำเมืองทองธานี -->
         <div class="area-1-orange bg-white p-6 rounded-xl shadow-lg flex flex-col overflow-hidden">
@@ -899,9 +918,7 @@
                 ปริมาณน้ำฝน (มม.) และระยะเวลาที่ฝนตก
             </h2>
             
-            <!-- Responsive Grid for Rainfall: 
-                 - บน PC: 8/12 (Chart) และ 4/12 (Card)
-                 - บนมือถือ: 12/12 (Card) และ 12/12 (Chart) เรียงซ้อนกัน -->
+            <!-- Responsive Grid for Rainfall: -->
             <div class="grid grid-cols-12 gap-4 flex-grow min-h-[50px]">
                 
                 <!-- Duration Card (col-span-12 on mobile, col-span-4 on large screens) -->
